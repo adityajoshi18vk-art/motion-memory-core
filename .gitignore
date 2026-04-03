@@ -1,0 +1,24 @@
+# Environment
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Large files
+*.mp4
+*.avi
+*.mov
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store

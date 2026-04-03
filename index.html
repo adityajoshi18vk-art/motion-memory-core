@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Motion Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Reset & Base ────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-deep:      #080c14;
+      --bg-panel:     #0d1220;
+      --bg-card:      #111827;
+      --bg-terminal:  #090d18;
+      --border:       #1e2d45;
+      --border-glow:  #1a3a5c;
+      --accent:       #00d4ff;
+      --accent-dim:   #0099bb;
+      --accent-glow:  rgba(0, 212, 255, 0.15);
+      --red:          #ff4560;
+      --red-glow:     rgba(255, 69, 96, 0.2);
+      --green:        #00e396;
+      --yellow:       #f5a623;
+      --text-primary: #e2e8f0;
+      --text-muted:   #4a6180;
+      --text-dim:     #2a3f58;
+      --font-ui:      'Outfit', sans-serif;
+      --font-mono:    'JetBrains Mono', monospace;
+      --radius:       12px;
+      --radius-sm:    8px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+      overflow-x: hidden;
+    }
+
+    /* ── Animated grid background ─────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────────────── */
+    .app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 28px;
+      gap: 20px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ───────────────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      gap: 16px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #0077aa, #00d4ff);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 20px rgba(0,212,255,0.3);
+      flex-shrink: 0;
+    }
+
+    .header-title h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #fff;
+    }
+
+    .header-title p {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .header-badges {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-model {
+      background: rgba(0,212,255,0.08);
+      border: 1px solid rgba(0,212,255,0.2);
+      color: var(--accent);
+    }
+
+    .badge-status {
+      background: rgba(0,227,150,0.08);
+      border: 1px solid rgba(0,227,150,0.25);
+      color: var(--green);
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    /* ── Control Bar ──────────────────────────────────────────────────── */
+    .control-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 24px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    #record-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 28px;
+      background: linear-gradient(135deg, #cc1f3a, var(--red));
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-family: var(--font-ui);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: 0 0 20px var(--red-glow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #record-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    #record-btn:hover::after { opacity: 1; }
+    #record-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 30px var(--red-glow); }
+    #record-btn:active { transform: translateY(0); }
+
+    #record-btn.loading {
+      background: linear-gradient(135deg, #1a2a40, #1e3050);
+      box-shadow: 0 0 20px var(--accent-glow);
+      pointer-events: none;
+    }
+
+    .btn-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #fff;
+      flex-shrink: 0;
+    }
+
+    #record-btn.loading .btn-dot {
+      background: var(--accent);
+      animation: spin-dot 0.8s linear infinite;
+    }
+
+    @keyframes spin-dot {
+      0%   { transform: scale(1); opacity: 1; }
+      50%  { transform: scale(0.4); opacity: 0.4; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .separator { width: 1px; height: 32px; background: var(--border); }
+
+    .stat-pill {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .stat-pill span:first-child {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stat-pill span:last-child {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+    }
+
+    .progress-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: 8px;
+    }
+
+    #progress-bar-bg {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    #progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+      border-radius: 4px;
+      transition: width 0.1s linear;
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    #progress-label {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* ── Main Split ───────────────────────────────────────────────────── */
+    .main-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      flex: 1;
+    }
+
+    /* ── Panel base ───────────────────────────────────────────────────── */
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .panel-title-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    /* ── Video Feed ───────────────────────────────────────────────────── */
+    .video-panel { position: relative; }
+
+    .video-body {
+      flex: 1;
+      position: relative;
+      background: #05080f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 380px;
+    }
+
+    .video-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .video-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: rgba(0,212,255,0.07);
+      border: 1px solid rgba(0,212,255,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-8px); }
+    }
+
+    .video-placeholder h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .video-placeholder p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      max-width: 260px;
+    }
+
+    /* Scanline overlay */
+    .video-body::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0,0,0,0.08) 3px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+    }
+
+    /* Corner brackets */
+    .corner {
+      position: absolute;
+      width: 20px; height: 20px;
+      border-color: var(--accent);
+      border-style: solid;
+      opacity: 0.5;
+    }
+    .corner-tl { top: 12px; left: 12px; border-width: 2px 0 0 2px; }
+    .corner-tr { top: 12px; right: 12px; border-width: 2px 2px 0 0; }
+    .corner-bl { bottom: 12px; left: 12px; border-width: 0 0 2px 2px; }
+    .corner-br { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; }
+
+    /* Recording overlay */
+    .rec-overlay {
+      display: none;
+      position: absolute;
+      top: 12px; right: 16px;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--red);
+    }
+
+    .rec-overlay.visible { display: flex; }
+
+    .rec-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      box-shadow: 0 0 8px var(--red);
+      animation: rec-blink 1s step-start infinite;
+    }
+
+    @keyframes rec-blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    /* Video metadata bar */
+    .video-meta {
+      display: flex;
+      gap: 20px;
+      padding: 10px 18px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    .meta-item span { color: var(--accent); }
+
+    /* ── Terminal ─────────────────────────────────────────────────────── */
+    .terminal-panel { position: relative; }
+
+    .terminal-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-red    { background: #ff5f56; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green  { background: #27c93f; }
+
+    .terminal-body {
+      flex: 1;
+      background: var(--bg-terminal);
+      padding: 16px 20px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      overflow-y: auto;
+      min-height: 380px;
+      max-height: 480px;
+      scroll-behavior: smooth;
+    }
+
+    .terminal-body::-webkit-scrollbar { width: 4px; }
+    .terminal-body::-webkit-scrollbar-track { background: transparent; }
+    .terminal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .t-line {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 6px;
+      opacity: 0;
+      transform: translateY(4px);
+      animation: line-in 0.25s ease forwards;
+    }
+
+    @keyframes line-in {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .t-ts   { color: var(--text-dim); flex-shrink: 0; }
+    .t-sys  { color: var(--text-muted); }
+    .t-info { color: var(--accent); }
+    .t-ok   { color: var(--green); }
+    .t-err  { color: var(--red); }
+    .t-warn { color: var(--yellow); }
+    .t-data { color: #c792ea; }
+    .t-cmd  { color: var(--yellow); font-weight: 600; }
+    .t-val  { color: #80cbc4; }
+
+    .json-block {
+      background: rgba(0,212,255,0.04);
+      border: 1px solid rgba(0,212,255,0.1);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 8px 0;
+      line-height: 1.7;
+      opacity: 0;
+      animation: line-in 0.3s ease 0.1s forwards;
+    }
+
+    .json-key   { color: #82aaff; }
+    .json-str   { color: #c3e88d; }
+    .json-num   { color: #f78c6c; }
+    .json-bool  { color: #ff9cac; }
+    .json-null  { color: var(--text-muted); }
+    .json-arr   { color: #c792ea; }
+    .json-cmd   { color: var(--yellow); font-weight: 600; }
+
+    .cursor {
+      display: inline-block;
+      width: 8px; height: 14px;
+      background: var(--accent);
+      margin-left: 4px;
+      vertical-align: middle;
+      animation: caret 1s step-start infinite;
+    }
+
+    @keyframes caret {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    .terminal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 18px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+    }
+
+    .tf-left {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #cmd-count {
+      color: var(--yellow);
+      font-weight: 600;
+    }
+
+    #clear-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #clear-btn:hover {
+      border-color: rgba(0,212,255,0.3);
+      color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    /* ── Command sequence pills ───────────────────────────────────────── */
+    .cmd-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 6px 0;
+    }
+
+    .cmd-pill {
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      background: rgba(245,166,35,0.1);
+      border: 1px solid rgba(245,166,35,0.3);
+      color: var(--yellow);
+      animation: pill-in 0.3s ease both;
+    }
+
+    @keyframes pill-in {
+      from { opacity: 0; transform: scale(0.8); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    /* ── Footer ───────────────────────────────────────────────────────── */
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 24px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+    }
+
+    footer span { color: var(--text-muted); }
+
+    /* ── Responsive ───────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .main-split { grid-template-columns: 1fr; }
+      .header-badges { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="header-left">
+      <div class="logo-icon">🤖</div>
+      <div class="header-title">
+        <h1>Motion Command Center</h1>
+        <p>Kinematic Compiler v2.5 · Gemini Neural Engine</p>
+      </div>
+    </div>
+    <div class="header-badges">
+      <div class="badge badge-model">
+        <div class="badge-dot"></div>
+        gemini-2.5-flash
+      </div>
+      <div class="badge badge-status">
+        <div class="badge-dot"></div>
+        SYSTEM READY
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Control Bar ── -->
+  <div class="control-bar">
+    <button id="record-btn">
+      <div class="btn-dot"></div>
+      <span id="btn-label">Record Motion</span>
+    </button>
+
+    <div class="separator"></div>
+
+    <div class="stat-pill">
+      <span>Endpoint</span>
+      <span id="stat-endpoint">:5000 / trigger_learning</span>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="stat-pill">
+      <span>Last Run</span>
+      <span id="stat-last">—</span>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="stat-pill">
+      <span>Status</span>
+      <span id="stat-status" style="color:var(--text-muted)">IDLE</span>
+    </div>
+
+    <div class="progress-wrap">
+      <div id="progress-bar-bg">
+        <div id="progress-bar-fill"></div>
+      </div>
+      <div id="progress-label">—</div>
+    </div>
+  </div>
+
+  <!-- ── Split Layout ── -->
+  <div class="main-split">
+
+    <!-- Left: Video Feed -->
+    <div class="panel video-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <div class="panel-title-dot"></div>
+          Live Video Feed
+        </div>
+        <div class="meta-item" style="font-size:11px">
+          <span id="feed-res">1280×720</span> · <span id="feed-fps">30 fps</span>
+        </div>
+      </div>
+      <div class="video-body" id="video-body">
+        <div class="corner corner-tl"></div>
+        <div class="corner corner-tr"></div>
+        <div class="corner corner-bl"></div>
+        <div class="corner corner-br"></div>
+        <div class="rec-overlay" id="rec-overlay">
+          <div class="rec-dot"></div>
+          REC
+        </div>
+        <div class="video-placeholder" id="video-placeholder">
+          <div class="video-icon">📷</div>
+          <h3>Camera Feed Inactive</h3>
+          <p>Press <strong>Record Motion</strong> to activate the webcam and begin kinematic capture.</p>
+        </div>
+      </div>
+      <div class="video-meta">
+        <div class="meta-item">CODEC <span>H.264</span></div>
+        <div class="meta-item">FORMAT <span>MP4</span></div>
+        <div class="meta-item">DURATION <span id="rec-duration">0.0s</span></div>
+        <div class="meta-item">SIZE <span id="rec-size">—</span></div>
+      </div>
+    </div>
+
+    <!-- Right: Terminal -->
+    <div class="panel terminal-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <div class="terminal-dots">
+            <div class="dot dot-red"></div>
+            <div class="dot dot-yellow"></div>
+            <div class="dot dot-green"></div>
+          </div>
+          &nbsp;Neural Compiler Output
+        </div>
+        <button id="clear-btn">CLEAR</button>
+      </div>
+      <div class="terminal-body" id="terminal">
+        <!-- lines injected here -->
+      </div>
+      <div class="terminal-footer">
+        <div class="tf-left">
+          COMMANDS COMPILED: <span id="cmd-count">0</span>
+          &nbsp;·&nbsp; SESSION LINES: <span id="line-count">0</span>
+        </div>
+        <div class="tf-left">
+          MODEL: <span style="color:var(--accent)">gemini-2.5-flash</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <span>Motion Memory Core · Kinematic Compiler Pipeline</span>
+    <span id="sys-time"></span>
+  </footer>
+
+</div>
+
+<script>
+  /* ── Helpers ──────────────────────────────────────────────────────────── */
+  const terminal   = document.getElementById('terminal');
+  const cmdCount   = document.getElementById('cmd-count');
+  const lineCount  = document.getElementById('line-count');
+  const recBtn     = document.getElementById('record-btn');
+  const btnLabel   = document.getElementById('btn-label');
+  const btnDot     = document.querySelector('.btn-dot');
+  const recOverlay = document.getElementById('rec-overlay');
+  const statStatus = document.getElementById('stat-status');
+  const statLast   = document.getElementById('stat-last');
+  const progressFill  = document.getElementById('progress-bar-fill');
+  const progressLabel = document.getElementById('progress-label');
+  const recDuration   = document.getElementById('rec-duration');
+  const recSize       = document.getElementById('rec-size');
+
+  let totalCmds  = 0;
+  let totalLines = 0;
+  let isRecording = false;
+  let progressTimer = null;
+  let durationTimer = null;
+  let durationSec = 0;
+
+  /* ── Clock ─────────────────────────────────────────────────────────── */
+  const sysTime = document.getElementById('sys-time');
+  function updateClock() {
+    sysTime.textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  /* ── Terminal write helpers ─────────────────────────────────────────── */
+  function ts() {
+    return new Date().toLocaleTimeString('en-GB', { hour12: false });
+  }
+
+  function writeLine(content, delay = 0) {
+    totalLines++;
+    lineCount.textContent = totalLines;
+    const line = document.createElement('div');
+    line.className = 't-line';
+    line.style.animationDelay = delay + 'ms';
+    line.innerHTML = `<span class="t-ts">[${ts()}]</span>${content}`;
+    terminal.appendChild(line);
+    setTimeout(() => terminal.scrollTop = terminal.scrollHeight, delay + 50);
+  }
+
+  function writeSystem(msg)  { writeLine(`<span class="t-sys">SYS  &gt;</span> <span class="t-sys">${msg}</span>`); }
+  function writeInfo(msg)    { writeLine(`<span class="t-info">INFO &gt;</span> <span class="t-info">${msg}</span>`); }
+  function writeOk(msg)      { writeLine(`<span class="t-ok">OK   &gt;</span> <span class="t-ok">${msg}</span>`); }
+  function writeError(msg)   { writeLine(`<span class="t-err">ERR  &gt;</span> <span class="t-err">${msg}</span>`); }
+  function writeWarn(msg)    { writeLine(`<span class="t-warn">WARN &gt;</span> <span class="t-warn">${msg}</span>`); }
+  function writeData(msg)    { writeLine(`<span class="t-data">DATA &gt;</span> <span class="t-data">${msg}</span>`); }
+
+  function writeCursor() {
+    const line = document.createElement('div');
+    line.className = 't-line';
+    line.id = 'cursor-line';
+    line.innerHTML = `<span class="t-ts">[${ts()}]</span><span class="t-info">READY &gt;</span> <span class="cursor"></span>`;
+    terminal.appendChild(line);
+    terminal.scrollTop = terminal.scrollHeight;
+    totalLines++;
+    lineCount.textContent = totalLines;
+  }
+
+  /* ── Syntax-highlight a JSON value ─────────────────────────────────── */
+  function highlightValue(val) {
+    if (Array.isArray(val)) {
+      if (val.length === 0) return '<span class="json-arr">[]</span>';
+      const items = val.map(v => `<span class="json-cmd">"${v}"</span>`).join(', ');
+      return `<span class="json-arr">[</span>${items}<span class="json-arr">]</span>`;
+    }
+    if (typeof val === 'string') return `<span class="json-str">"${val}"</span>`;
+    if (typeof val === 'number') return `<span class="json-num">${val}</span>`;
+    if (typeof val === 'boolean') return `<span class="json-bool">${val}</span>`;
+    if (val === null) return `<span class="json-null">null</span>`;
+    return String(val);
+  }
+
+  /* ── Render a full JSON object into the terminal ────────────────────── */
+  function renderJSON(data) {
+    const block = document.createElement('div');
+    block.className = 'json-block';
+
+    let html = '<span class="json-arr">{</span><br>';
+    const entries = Object.entries(data);
+    entries.forEach(([k, v], i) => {
+      const comma = i < entries.length - 1 ? ',' : '';
+      html += `&nbsp;&nbsp;<span class="json-key">"${k}"</span>: ${highlightValue(v)}${comma}<br>`;
+    });
+    html += '<span class="json-arr">}</span>';
+    block.innerHTML = html;
+    terminal.appendChild(block);
+    terminal.scrollTop = terminal.scrollHeight;
+    totalLines++;
+    lineCount.textContent = totalLines;
+  }
+
+  /* ── Render command pills ─────────────────────────────────────────── */
+  function renderCommandPills(commands) {
+    if (!commands || commands.length === 0) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'cmd-pills';
+    commands.forEach((cmd, i) => {
+      const pill = document.createElement('div');
+      pill.className = 'cmd-pill';
+      pill.style.animationDelay = (i * 60) + 'ms';
+      pill.textContent = cmd;
+      wrap.appendChild(pill);
+    });
+    terminal.appendChild(wrap);
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+
+  /* ── Progress bar animation ─────────────────────────────────────────── */
+  function startProgress(durationMs) {
+    clearInterval(progressTimer);
+    const start = Date.now();
+    progressFill.style.width = '0%';
+    progressLabel.textContent = '0%';
+    progressTimer = setInterval(() => {
+      const pct = Math.min(((Date.now() - start) / durationMs) * 100, 98);
+      progressFill.style.width = pct + '%';
+      progressLabel.textContent = Math.floor(pct) + '%';
+    }, 80);
+  }
+
+  function finishProgress() {
+    clearInterval(progressTimer);
+    progressFill.style.width = '100%';
+    progressLabel.textContent = '100%';
+    setTimeout(() => {
+      progressFill.style.width = '0%';
+      progressLabel.textContent = '—';
+    }, 1500);
+  }
+
+  /* ── Duration counter ───────────────────────────────────────────────── */
+  function startDuration() {
+    durationSec = 0;
+    recDuration.textContent = '0.0s';
+    durationTimer = setInterval(() => {
+      durationSec += 0.1;
+      recDuration.textContent = durationSec.toFixed(1) + 's';
+    }, 100);
+  }
+
+  function stopDuration() {
+    clearInterval(durationTimer);
+  }
+
+  /* ── SET state helpers ──────────────────────────────────────────────── */
+  function setRecording() {
+    isRecording = true;
+    recBtn.classList.add('loading');
+    btnLabel.textContent = 'Processing…';
+    recOverlay.classList.add('visible');
+    statStatus.textContent = 'RECORDING';
+    statStatus.style.color = 'var(--red)';
+    startProgress(8000);
+    startDuration();
+  }
+
+  function setIdle() {
+    isRecording = false;
+    recBtn.classList.remove('loading');
+    btnLabel.textContent = 'Record Motion';
+    recOverlay.classList.remove('visible');
+    statStatus.textContent = 'IDLE';
+    statStatus.style.color = 'var(--text-muted)';
+    statLast.textContent = ts();
+    finishProgress();
+    stopDuration();
+  }
+
+  /* ── Boot sequence ──────────────────────────────────────────────────── */
+  function bootSequence() {
+    const lines = [
+      () => writeSystem('Initialising Motion Command Center …'),
+      () => writeInfo('Gemini 2.5 Flash — Neural Kinematic Engine loaded'),
+      () => writeInfo('Endpoint: http://localhost:5000/trigger_learning'),
+      () => writeOk('System ready. Awaiting motion capture trigger.'),
+      () => writeCursor(),
+    ];
+    lines.forEach((fn, i) => setTimeout(fn, i * 180 + 200));
+  }
+
+  /* ── Main fetch logic ───────────────────────────────────────────────── */
+  recBtn.addEventListener('click', async () => {
+    if (isRecording) return;
+
+    // Remove old cursor
+    const oldCursor = document.getElementById('cursor-line');
+    if (oldCursor) oldCursor.remove();
+
+    setRecording();
+    writeSystem('──────────────────────────────────────────');
+    writeInfo('Trigger sent → POST http://localhost:5000/trigger_learning');
+    writeData('Waiting for vision pipeline …');
+
+    const startTime = Date.now();
+
+    try {
+      const res = await fetch('http://localhost:5000/trigger_learning', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      });
+
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} — ${res.statusText}`);
+      }
+
+      const data = await res.json();
+      const commands = data.commands ?? data.sequence ?? data.result ?? [];
+
+      writeOk(`Response received in ${elapsed}s · Status ${res.status}`);
+      writeData('Parsing kinematic JSON payload …');
+      renderJSON(data);
+
+      if (Array.isArray(commands) && commands.length > 0) {
+        totalCmds += commands.length;
+        cmdCount.textContent = totalCmds;
+        writeOk(`Compiled ${commands.length} robot command(s):`);
+        renderCommandPills(commands);
+        recSize.textContent = (JSON.stringify(data).length / 1024).toFixed(1) + ' KB';
+      } else {
+        writeWarn('No mappable commands detected in motion sequence.');
+      }
+
+    } catch (err) {
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        writeError('Connection refused — is the Flask server running on :5000?');
+        writeWarn('Start the server: python server.py');
+
+        // ── Demo mode: render mock data so UI is testable ──────────────
+        writeInfo('↳ Demo mode: rendering mock payload …');
+        const mock = {
+          status: 'demo',
+          model: 'gemini-2.5-flash',
+          elapsed_s: parseFloat(elapsed),
+          commands: ['RAISE_RIGHT_ARM', 'OPEN_HAND', 'CLOSE_HAND', 'LOWER_RIGHT_ARM', 'TURN_TORSO_LEFT'],
+          video_path: 'demo_motion.mp4',
+          timestamp: new Date().toISOString(),
+        };
+        renderJSON(mock);
+        totalCmds += mock.commands.length;
+        cmdCount.textContent = totalCmds;
+        writeOk(`[DEMO] ${mock.commands.length} commands compiled:`);
+        renderCommandPills(mock.commands);
+        recSize.textContent = (JSON.stringify(mock).length / 1024).toFixed(1) + ' KB';
+      } else {
+        writeError(`Error after ${elapsed}s — ${err.message}`);
+      }
+    }
+
+    setIdle();
+    writeCursor();
+  });
+
+  /* ── Clear button ─────────────────────────────────────────────────── */
+  document.getElementById('clear-btn').addEventListener('click', () => {
+    terminal.innerHTML = '';
+    totalLines = 0;
+    lineCount.textContent = 0;
+    bootSequence();
+  });
+
+  /* ── Boot ─────────────────────────────────────────────────────────── */
+  bootSequence();
+</script>
+</body>
+</html>
