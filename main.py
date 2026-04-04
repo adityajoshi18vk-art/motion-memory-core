@@ -21,7 +21,7 @@ while True:
     try:
         # 2. Trigger the AI compiler
         print("Compiling video via Gemini...")
-        commands = gemini_brain.compile_motion("demo_motion.mp4")
+        commands = gemini_brain.compile_motion("demo_motion.webm")
 
         # 3. Convert to JSON bytes and send it back to the exact same address
         response_data = json.dumps(commands).encode('utf-8')

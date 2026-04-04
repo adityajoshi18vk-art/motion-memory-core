@@ -11,26 +11,33 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ──────────────────────────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """You are a kinematic compiler for a Pepper robot. 
-Watch the human waving BOTH hands. Translate their complex 3D motion into motor arrays.
+SYSTEM_PROMPT = """You are a master kinematic compiler for a SoftBank Pepper robot.
+Carefully analyze the video of the human performing movements. Translate their complete sequence of 3D motions into precise robotic motor command arrays.
 
-### JOINT NAMES (Use these exactly):
-- Right Arm: RShoulderPitch, RShoulderRoll, RElbowRoll, RHand
-- Left Arm: LShoulderPitch, LShoulderRoll, LElbowRoll, LHand
+### JOINT NAMES (Use these exactly for mapping):
 - Head: HeadYaw, HeadPitch
+- Right Arm: RShoulderPitch, RShoulderRoll, RElbowYaw, RElbowRoll, RWristYaw, RHand
+- Left Arm: LShoulderPitch, LShoulderRoll, LElbowYaw, LElbowRoll, LWristYaw, LHand
+- Torso/Lower: HipRoll, HipPitch, KneePitch
 
 ### CRITICAL RULES:
-1. Output ONLY a valid JSON array of objects.
-2. If BOTH hands move, include BOTH Left and Right joints in the SAME object.
-3. Keep the number of joints per object under 6 for stability.
-4. Angles must be floats between -2.0 and 2.0.
+1. Output ONLY a valid JSON array of objects representing chronological keyframes.
+2. Capture ALL joint movements seen in the video natively. Do not isolate just the arms if the head or torso moves.
+3. Combine all simultaneous joint movements into the SAME keyframe object to ensure fluid multi-limb motion.
+4. Scale human angles appropriately. Angles must be floats generally between -2.0 and 2.0 (radians). Hands use 0.0 (closed) to 1.0 (open).
+5. Provide a realistic execution `duration` (in seconds) for each keyframe to simulate authentic human speed.
 
-Example for two-handed wave:
+Example for a complex body routine:
 [
   {
-    "joints": ["RShoulderPitch", "LShoulderPitch", "RShoulderRoll", "LShoulderRoll"],
-    "angles": [-1.0, -1.0, -0.5, 0.5],
-    "duration": 1.0
+    "joints": ["HeadPitch", "RShoulderPitch", "RHand", "HipPitch"],
+    "angles": [-0.2, -1.5, 1.0, -0.3],
+    "duration": 1.2
+  },
+  {
+    "joints": ["HeadYaw", "LShoulderPitch", "LShoulderRoll", "LElbowRoll", "RHand", "HipPitch"],
+    "angles": [0.5, -1.2, 0.4, -0.8, 0.0, 0.0],
+    "duration": 0.8
   }
 ]
 """

@@ -707,6 +707,7 @@
         </div>
       </div>
       <div class="video-body" id="video-body">
+        <video id="webcam" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; position:absolute; inset:0; z-index:0; display:none;"></video>
         <div class="corner corner-tl"></div>
         <div class="corner corner-tr"></div>
         <div class="corner corner-bl"></div>
@@ -722,8 +723,8 @@
         </div>
       </div>
       <div class="video-meta">
-        <div class="meta-item">CODEC <span>H.264</span></div>
-        <div class="meta-item">FORMAT <span>MP4</span></div>
+        <div class="meta-item">CODEC <span>VP8</span></div>
+        <div class="meta-item">FORMAT <span>WEBM</span></div>
         <div class="meta-item">DURATION <span id="rec-duration">0.0s</span></div>
         <div class="meta-item">SIZE <span id="rec-size">—</span></div>
       </div>
@@ -781,6 +782,12 @@
   const progressLabel = document.getElementById('progress-label');
   const recDuration   = document.getElementById('rec-duration');
   const recSize       = document.getElementById('rec-size');
+
+  const webcam = document.getElementById('webcam');
+  const videoPlaceholder = document.getElementById('video-placeholder');
+  let stream = null;
+  let mediaRecorder = null;
+  let recordedChunks = [];
 
   let totalCmds  = 0;
   let totalLines = 0;
@@ -942,12 +949,26 @@
   }
 
   /* ── Boot sequence ──────────────────────────────────────────────────── */
+  async function initCamera() {
+    try {
+      writeSystem('Initializing local webcam feed …');
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      webcam.srcObject = stream;
+      webcam.style.display = 'block';
+      videoPlaceholder.style.display = 'none';
+      writeOk('Webcam connected and streaming');
+    } catch (err) {
+      writeError(`Webcam error: ${err.message}`);
+    }
+  }
+
   function bootSequence() {
     const lines = [
       () => writeSystem('Initialising Motion Command Center …'),
       () => writeInfo('Gemini 2.5 Flash — Neural Kinematic Engine loaded'),
       () => writeInfo('Endpoint: http://localhost:5000/trigger_learning'),
       () => writeOk('System ready. Awaiting motion capture trigger.'),
+      () => initCamera(),
       () => writeCursor(),
     ];
     lines.forEach((fn, i) => setTimeout(fn, i * 180 + 200));
@@ -956,6 +977,10 @@
   /* ── Main fetch logic ───────────────────────────────────────────────── */
   recBtn.addEventListener('click', async () => {
     if (isRecording) return;
+    if (!stream) {
+      writeError('Camera stream not available. Cannot record.');
+      return;
+    }
 
     // Remove old cursor
     const oldCursor = document.getElementById('cursor-line');
@@ -963,70 +988,94 @@
 
     setRecording();
     writeSystem('──────────────────────────────────────────');
-    writeInfo('Trigger sent → POST http://localhost:5000/trigger_learning');
-    writeData('Waiting for vision pipeline …');
+    writeInfo('Starting MediaRecorder capture (8s) …');
+    writeData('Recording motion for kinematic compilation …');
+    
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+    mediaRecorder.ondataavailable = e => {
+      if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+    
+    mediaRecorder.onstop = async () => {
+      setIdle();
+      writeOk('Recording finished. Generating video blob...');
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      const recSizeStr = (blob.size / 1024).toFixed(1) + ' KB';
+      writeInfo(`Blob size: ${recSizeStr}`);
+      recSize.textContent = recSizeStr;
+      
+      const formData = new FormData();
+      formData.append('video', blob, 'demo_motion.webm');
+      
+      writeData('Uploading video mapping to backend POST /trigger_learning...');
+      const startTime = Date.now();
 
-    const startTime = Date.now();
+      try {
+        const res = await fetch('http://localhost:5000/trigger_learning', {
+          method: 'POST',
+          body: formData
+        });
 
-    try {
-      const res = await fetch('http://localhost:5000/trigger_learning', {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-      });
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
 
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} — ${res.statusText}`);
+        }
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status} — ${res.statusText}`);
+        const data = await res.json();
+        const commands = data.commands ?? data.sequence ?? data.result ?? [];
+
+        writeOk(`Response received in ${elapsed}s · Status ${res.status}`);
+        writeData('Parsing kinematic JSON payload …');
+        renderJSON(data);
+
+        if (Array.isArray(commands) && commands.length > 0) {
+          totalCmds += commands.length;
+          cmdCount.textContent = totalCmds;
+          writeOk(`Compiled ${commands.length} robot command(s):`);
+          renderCommandPills(commands);
+        } else {
+          writeWarn('No mappable commands detected in motion sequence.');
+        }
+
+      } catch (err) {
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+
+        if (err.name === 'TypeError' && err.message.includes('fetch')) {
+          writeError('Connection refused — is the Flask server running on :5000?');
+          writeWarn('Start the server: python server.py');
+
+          // ── Demo mode: render mock data so UI is testable ──────────────
+          writeInfo('↳ Demo mode: rendering mock payload …');
+          const mock = {
+            status: 'demo',
+            model: 'gemini-2.5-flash',
+            elapsed_s: parseFloat(elapsed),
+            commands: ['RAISE_RIGHT_ARM', 'OPEN_HAND', 'CLOSE_HAND', 'LOWER_RIGHT_ARM', 'TURN_TORSO_LEFT'],
+            video_path: 'demo_motion.webm',
+            timestamp: new Date().toISOString(),
+          };
+          renderJSON(mock);
+          totalCmds += mock.commands.length;
+          cmdCount.textContent = totalCmds;
+          writeOk(`[DEMO] ${mock.commands.length} commands compiled:`);
+          renderCommandPills(mock.commands);
+        } else {
+          writeError(`Error after ${elapsed}s — ${err.message}`);
+        }
       }
 
-      const data = await res.json();
-      const commands = data.commands ?? data.sequence ?? data.result ?? [];
-
-      writeOk(`Response received in ${elapsed}s · Status ${res.status}`);
-      writeData('Parsing kinematic JSON payload …');
-      renderJSON(data);
-
-      if (Array.isArray(commands) && commands.length > 0) {
-        totalCmds += commands.length;
-        cmdCount.textContent = totalCmds;
-        writeOk(`Compiled ${commands.length} robot command(s):`);
-        renderCommandPills(commands);
-        recSize.textContent = (JSON.stringify(data).length / 1024).toFixed(1) + ' KB';
-      } else {
-        writeWarn('No mappable commands detected in motion sequence.');
+      writeCursor();
+    };
+    
+    mediaRecorder.start();
+    // Stop recording after 8 seconds (matching the progress bar dur in setRecording)
+    setTimeout(() => {
+      if (mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
       }
-
-    } catch (err) {
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-
-      if (err.name === 'TypeError' && err.message.includes('fetch')) {
-        writeError('Connection refused — is the Flask server running on :5000?');
-        writeWarn('Start the server: python server.py');
-
-        // ── Demo mode: render mock data so UI is testable ──────────────
-        writeInfo('↳ Demo mode: rendering mock payload …');
-        const mock = {
-          status: 'demo',
-          model: 'gemini-2.5-flash',
-          elapsed_s: parseFloat(elapsed),
-          commands: ['RAISE_RIGHT_ARM', 'OPEN_HAND', 'CLOSE_HAND', 'LOWER_RIGHT_ARM', 'TURN_TORSO_LEFT'],
-          video_path: 'demo_motion.mp4',
-          timestamp: new Date().toISOString(),
-        };
-        renderJSON(mock);
-        totalCmds += mock.commands.length;
-        cmdCount.textContent = totalCmds;
-        writeOk(`[DEMO] ${mock.commands.length} commands compiled:`);
-        renderCommandPills(mock.commands);
-        recSize.textContent = (JSON.stringify(mock).length / 1024).toFixed(1) + ' KB';
-      } else {
-        writeError(`Error after ${elapsed}s — ${err.message}`);
-      }
-    }
-
-    setIdle();
-    writeCursor();
+    }, 8000);
   });
 
   /* ── Clear button ─────────────────────────────────────────────────── */

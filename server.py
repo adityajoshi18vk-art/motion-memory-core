@@ -2,7 +2,7 @@ import os
 import subprocess
 import threading
 import sys
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -12,41 +12,39 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)  # Enable CORS for the dashboard
 
-@app.route('/trigger_learning', methods=['GET'])
+@app.route('/')
+def index():
+    return send_file('index.html')
+
+@app.route('/trigger_learning', methods=['POST'])
 def trigger_learning():
     """
     Orchestrates the Motion Memory Pipeline:
-    1. Record Video (vision.py)
+    1. Receive Uploaded Video
     2. Analyze Video (gemini_brain.py)
     3. Return JSON sequence
     """
     try:
+        if 'video' not in request.files:
+            return jsonify({"error": "No video file provided"}), 400
+            
+        file = request.files['video']
+        if file.filename == '':
+            return jsonify({"error": "No selected file"}), 400
+
+        video_path = "demo_motion.webm"
+        file.save(video_path)
+        print(f"  🎬  Saved incoming video chunk to {video_path}")
+
         # Use the python executable from the .venv if possible
         python_exe = os.path.join(os.getcwd(), '.venv', 'Scripts', 'python.exe')
         if not os.path.exists(python_exe):
             python_exe = sys.executable
 
-        # 1. Record Video (vision.py)
-        print("  🎬  Starting video recording (vision.py)...")
-        record_proc = subprocess.run(
-            [python_exe, "vision.py"],
-            capture_output=True,
-            text=True,
-            encoding='utf-8',
-            errors='ignore',
-            env={**os.environ, "PYTHONIOENCODING": "utf-8"}
-        )
-        if record_proc.returncode != 0:
-            print(f"  ❌  Recording FAILED: {record_proc.stderr}")
-            return jsonify({
-                "error": "Recording failed",
-                "stderr": record_proc.stderr
-            }), 500
-
         # 2. Analyze Video (gemini_brain.py)
         print("  🤖  Starting motion analysis (gemini_brain.py)...")
         analysis_proc = subprocess.run(
-            [python_exe, "gemini_brain.py", "demo_motion.mp4"],
+            [python_exe, "gemini_brain.py", video_path],
             capture_output=True,
             text=True,
             encoding='utf-8',
@@ -83,7 +81,7 @@ def trigger_learning():
             "status": "success",
             "model": "gemini-2.5-flash",
             "commands": commands,
-            "video_path": "demo_motion.mp4"
+            "video_path": video_path
         })
 
     except Exception as e:
