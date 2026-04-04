@@ -1,4 +1,6 @@
 opencv-python
+mediapipe
+numpy
 google-genai
 flask
 flask-cors

@@ -641,13 +641,13 @@
       <div class="logo-icon">🤖</div>
       <div class="header-title">
         <h1>Motion Command Center</h1>
-        <p>Kinematic Compiler v2.5 · Gemini Neural Engine</p>
+        <p>Kinematic Compiler v3.0 · MediaPipe Vision Engine</p>
       </div>
     </div>
     <div class="header-badges">
       <div class="badge badge-model">
         <div class="badge-dot"></div>
-        gemini-2.5-flash
+        mediapipe-pose
       </div>
       <div class="badge badge-status">
         <div class="badge-dot"></div>
@@ -739,7 +739,7 @@
             <div class="dot dot-yellow"></div>
             <div class="dot dot-green"></div>
           </div>
-          &nbsp;Neural Compiler Output
+          &nbsp;Kinematic Compiler Output
         </div>
         <button id="clear-btn">CLEAR</button>
       </div>
@@ -752,7 +752,7 @@
           &nbsp;·&nbsp; SESSION LINES: <span id="line-count">0</span>
         </div>
         <div class="tf-left">
-          MODEL: <span style="color:var(--accent)">gemini-2.5-flash</span>
+          MODEL: <span style="color:var(--accent)">mediapipe-pose</span>
         </div>
       </div>
     </div>
@@ -965,7 +965,7 @@
   function bootSequence() {
     const lines = [
       () => writeSystem('Initialising Motion Command Center …'),
-      () => writeInfo('Gemini 2.5 Flash — Neural Kinematic Engine loaded'),
+      () => writeInfo('MediaPipe Pose v0.10 — Full-Body Kinematic Engine loaded'),
       () => writeInfo('Endpoint: http://localhost:5000/trigger_learning'),
       () => writeOk('System ready. Awaiting motion capture trigger.'),
       () => initCamera(),
@@ -1050,7 +1050,7 @@
           writeInfo('↳ Demo mode: rendering mock payload …');
           const mock = {
             status: 'demo',
-            model: 'gemini-2.5-flash',
+            model: 'mediapipe-pose-engine',
             elapsed_s: parseFloat(elapsed),
             commands: ['RAISE_RIGHT_ARM', 'OPEN_HAND', 'CLOSE_HAND', 'LOWER_RIGHT_ARM', 'TURN_TORSO_LEFT'],
             video_path: 'demo_motion.webm',

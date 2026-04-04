@@ -21,7 +21,7 @@ def trigger_learning():
     """
     Orchestrates the Motion Memory Pipeline:
     1. Receive Uploaded Video
-    2. Analyze Video (gemini_brain.py)
+    2. Analyze Video (mediapipe_engine.py)
     3. Return JSON sequence
     """
     try:
@@ -41,10 +41,10 @@ def trigger_learning():
         if not os.path.exists(python_exe):
             python_exe = sys.executable
 
-        # 2. Analyze Video (gemini_brain.py)
-        print("  🤖  Starting motion analysis (gemini_brain.py)...")
+        # 2. Analyze Video (mediapipe_engine.py)
+        print("  🤖  Starting motion analysis (mediapipe_engine.py)...")
         analysis_proc = subprocess.run(
-            [python_exe, "gemini_brain.py", video_path],
+            [python_exe, "mediapipe_engine.py", video_path],
             capture_output=True,
             text=True,
             encoding='utf-8',
@@ -59,7 +59,7 @@ def trigger_learning():
             }), 500
 
         # Parse the output to find the JSON result
-        # Our gemini_brain.py prints the sequence at the end
+        # Our mediapipe_engine.py prints the sequence to stdout
         import json
         output = analysis_proc.stdout
         
@@ -79,7 +79,7 @@ def trigger_learning():
         print(f"  ✅  Success! Compiled {len(commands)} commands.")
         return jsonify({
             "status": "success",
-            "model": "gemini-2.5-flash",
+            "model": "mediapipe-pose-engine",
             "commands": commands,
             "video_path": video_path
         })
