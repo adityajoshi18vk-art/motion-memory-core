@@ -1,38 +1,69 @@
 import os
+import sys
+import contextlib
+
+# 🤫 SILENCE THE TRASH (Must be at the very top)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
 import json
 import socket
-import time
+import cv2
+import numpy as np
+import tensorflow as tf
 from flask import Flask, request, jsonify, send_file, Response, stream_with_context
 from flask_cors import CORS
 import gemini_brain
 import violence_filter
 
-app = Flask(__name__, static_folder='.', static_url_path='')
+# Mute the internal TensorFlow logger
+tf.get_logger().setLevel('ERROR')
+
+app = Flask(__name__)
 CORS(app)
 
 # Robot's UDP Address
 UDP_IP = "127.0.0.1"
 UDP_PORT = 5005
 
+# --- 🛡️ STRICT MODEL BOOT CHECK ---
+print("\n" + "="*50)
+print(" 🛡️  BOOTING MOTION MEMORY CORE (STRICT AI MODE) ")
+print(" ⏳ Muffling terminal and verifying Neural Classifier...")
+
+# Mandatory startup check as requested by USER
+try:
+    # Use contextlib to catch any sneak residue from Keras 
+    with open(os.devnull, 'w') as fnull:
+        with contextlib.redirect_stdout(fnull), contextlib.redirect_stderr(fnull):
+             # This call triggers the model load in violence_filter.py
+             violence_filter._get_model()
+    
+    print(" ✅ AI MODEL LOADED & VERIFIED AT STARTUP")
+    print(" ✅ PRE-FILTER SYSTEM: ACTIVE")
+    print("="*50 + "\n")
+except Exception as e:
+    print("\n" + "!"*50)
+    print(f"❌ CRITICAL ERROR: Model failed to initialize!")
+    print(f"🔍 Detail: {e}")
+    print("!"*50 + "\n")
+    sys.exit(1)
 
 def _sse(event, data):
     """Format a single Server-Sent Event line."""
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
-
 
 @app.route('/')
 def index():
     """Serves the Web Dashboard Interface"""
     return send_file(os.path.join(os.path.dirname(__file__), 'index.html'))
 
-
 @app.route('/upload', methods=['POST'])
 def upload_video():
     """
-    Endpoint to receive a video.  Returns an SSE stream so the frontend
+    Endpoint to receive a video. Returns an SSE stream so the frontend
     can show real-time progress through each pipeline stage.
     """
-    # ── 1. Validate the incoming file ─────────────────────────────────
+    # 1. Validate the incoming file
     if 'file' not in request.files and 'video' not in request.files:
         return jsonify({"error": "No file part in the request"}), 400
 
@@ -47,9 +78,8 @@ def upload_video():
     file.save(temp_video_path)
     print(f"\n📂 Video saved temporarily as {temp_video_path}")
 
-    # ── 2. Stream the pipeline stages as SSE ──────────────────────────
+    # 2. Stream the pipeline stages as SSE
     def generate():
-        commands = []
         try:
             # Stage 1 — File received
             yield _sse("progress", {
@@ -58,7 +88,7 @@ def upload_video():
                 "message": "Video uploaded successfully"
             })
 
-            # Stage 2 — Safety screening
+            # Stage 2 — AI Safety screening
             yield _sse("progress", {
                 "step": 2,
                 "icon": "🛡️",
@@ -68,30 +98,19 @@ def upload_video():
             verdict = violence_filter.check_video(temp_video_path)
 
             if not verdict["passed"]:
-                error_detail = verdict.get("error")
-                if error_detail:
-                    msg = error_detail
-                else:
-                    msg = (
-                        f"Video rejected: classified as {verdict['label']} "
-                        f"({verdict['confidence']}% confidence). "
-                        "Please upload a non-violent motion video."
-                    )
-                print(f"⛔ Upload blocked by safety filter: {msg}")
-                yield _sse("rejected", {
-                    "message": msg,
-                    "filter": {
-                        "label": verdict["label"],
-                        "confidence": verdict["confidence"],
-                        "raw_score": verdict["raw_score"],
-                    },
-                })
+                msg = verdict.get("error") or (
+                    f"Video rejected: classified as {verdict.get('label', 'VIOLENT')} "
+                    f"({verdict.get('confidence', 0)}% confidence). "
+                    "Please record a safe motion."
+                )
+                print(f"⛔ Rejection: {msg}")
+                yield _sse("rejected", {"message": msg})
                 return
 
             yield _sse("progress", {
                 "step": 3,
                 "icon": "✅",
-                "message": f"Safety check passed — NON-VIOLENT ({verdict['confidence']}%)"
+                "message": f"Safety check passed ({verdict['confidence']}% certainty)"
             })
 
             # Stage 3 — Gemini compilation
@@ -104,29 +123,20 @@ def upload_video():
             commands = gemini_brain.compile_motion(temp_video_path)
 
             if not commands:
-                yield _sse("error", {
-                    "message": "Gemini failed to generate kinematics. Check API key or prompt."
-                })
+                yield _sse("error", {"message": "Gemini generation failed."})
                 return
 
             yield _sse("progress", {
                 "step": 5,
                 "icon": "⚙️",
-                "message": f"Generated {len(commands)} kinematic keyframes"
+                "message": f"Compiled {len(commands)} keyframes"
             })
-
-            # Debug output
-            print("\n" + "="*40)
-            print(" 🐛 DEBUG: AI KINEMATIC COMMANDS ")
-            print("="*40)
-            print(json.dumps(commands, indent=4))
-            print("="*40 + "\n")
 
             # Stage 4 — UDP dispatch
             yield _sse("progress", {
                 "step": 6,
                 "icon": "📤",
-                "message": "Sending commands to robot via UDP..."
+                "message": "Dispatching to robot..."
             })
 
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -136,7 +146,7 @@ def upload_video():
 
             # Stage 5 — Done
             yield _sse("done", {
-                "message": "Motion compiled and sent to robot!",
+                "message": "Motion verified and sent!",
                 "commands_generated": len(commands),
             })
 
@@ -148,9 +158,8 @@ def upload_video():
             if os.path.exists(temp_video_path):
                 try:
                     os.remove(temp_video_path)
-                    print(f"🗑️ Cleaned up temporary file.\n")
-                except Exception as cleanup_err:
-                    print(f"⚠️ Failed to delete temp file: {cleanup_err}\n")
+                except:
+                    pass
 
     return Response(
         stream_with_context(generate()),
@@ -161,14 +170,6 @@ def upload_video():
         },
     )
 
-
 if __name__ == '__main__':
-    # Pre-load the model at startup so the first request isn't slow
-    print("===================================================")
-    print(" 🚀 MOTION MEMORY CORE - SERVER ONLINE ")
-    print(" 🌐 Open your browser to: http://127.0.0.1:5000 ")
-    print("===================================================")
-    print(" 🛡️  Pre-loading violence detection model...")
-    violence_filter._get_model()
-    print("===================================================")
-    app.run(host='0.0.0.0', port=5000, threaded=True, debug=True)
+    print(" 🚀 SERVER GOING LIVE AT http://127.0.0.1:5000 ")
+    app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)
