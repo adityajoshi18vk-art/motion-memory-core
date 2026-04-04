@@ -242,22 +242,110 @@
       transition: color 0.3s ease;
     }
 
-    .loading {
-      color: #60a5fa;
-      animation: pulse 1.5s infinite;
-    }
-
-    .success {
-      color: #34d399;
-    }
-
-    .error {
-      color: #f87171;
-    }
+    .loading { color: #60a5fa; animation: pulse 1.5s infinite; }
+    .success { color: #34d399; }
+    .error   { color: #f87171; }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
+    }
+
+    /* ── Pipeline Progress Tracker ─────────────────────────── */
+    .pipeline {
+      display: none;
+      text-align: left;
+      margin-bottom: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 16px 18px;
+    }
+    .pipeline.visible { display: block; }
+
+    .pipeline .step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 0;
+      font-size: 13px;
+      color: #475569;
+      transition: all 0.35s ease;
+    }
+    .pipeline .step.active {
+      color: #60a5fa;
+    }
+    .pipeline .step.done {
+      color: #34d399;
+    }
+    .pipeline .step.fail {
+      color: #f87171;
+    }
+
+    .pipeline .step .step-icon {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .pipeline .step.active .step-icon {
+      animation: pulse 1.2s infinite;
+    }
+
+    .pipeline .step .step-label {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .pipeline .step .step-check {
+      font-size: 13px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .pipeline .step.done .step-check { opacity: 1; }
+
+    /* ── Violence Rejection Banner ─────────────────────────── */
+    .rejection-banner {
+      display: none;
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.08));
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      text-align: center;
+      animation: shake 0.5s ease-in-out;
+    }
+    .rejection-banner.visible { display: block; }
+    .rejection-banner .icon  { font-size: 38px; margin-bottom: 8px; }
+    .rejection-banner .title { font-size: 16px; font-weight: 700; color: #fca5a5; margin-bottom: 6px; }
+    .rejection-banner .detail { font-size: 12px; color: #94a3b8; margin-bottom: 14px; line-height: 1.6; }
+
+    .btn-retry {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+      background: rgba(239, 68, 68, 0.25);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      transition: all 0.2s;
+    }
+    .btn-retry:hover { background: rgba(239, 68, 68, 0.4); color: #fff; }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      15% { transform: translateX(-6px); }
+      30% { transform: translateX(6px); }
+      45% { transform: translateX(-4px); }
+      60% { transform: translateX(4px); }
+      75% { transform: translateX(-2px); }
     }
   </style>
 </head>
@@ -310,6 +398,24 @@
       </div>
     </div>
 
+    <!-- Pipeline Progress Tracker -->
+    <div class="pipeline" id="pipeline">
+      <div class="step" id="step-1"><span class="step-icon">📂</span><span class="step-label">Upload video</span><span class="step-check">✓</span></div>
+      <div class="step" id="step-2"><span class="step-icon">🛡️</span><span class="step-label">Safety screening</span><span class="step-check">✓</span></div>
+      <div class="step" id="step-3"><span class="step-icon">✅</span><span class="step-label">Content cleared</span><span class="step-check">✓</span></div>
+      <div class="step" id="step-4"><span class="step-icon">🧠</span><span class="step-label">Gemini motion compile</span><span class="step-check">✓</span></div>
+      <div class="step" id="step-5"><span class="step-icon">⚙️</span><span class="step-label">Keyframes generated</span><span class="step-check">✓</span></div>
+      <div class="step" id="step-6"><span class="step-icon">📤</span><span class="step-label">Send to robot via UDP</span><span class="step-check">✓</span></div>
+    </div>
+
+    <!-- Violence Rejection Banner -->
+    <div class="rejection-banner" id="rejection-banner">
+      <div class="icon">⛔</div>
+      <div class="title" id="rejection-title">Content Flagged</div>
+      <div class="detail" id="rejection-detail"></div>
+      <button class="btn-retry" id="btn-retry">🔄 Try Again</button>
+    </div>
+
     <div id="status"></div>
   </div>
 
@@ -325,6 +431,11 @@
     const btnStartRec = document.getElementById('start-rec');
     const btnStopRec = document.getElementById('stop-rec');
     const recIndicator = document.getElementById('rec-indicator');
+    const rejectionBanner = document.getElementById('rejection-banner');
+    const rejectionTitle = document.getElementById('rejection-title');
+    const rejectionDetail = document.getElementById('rejection-detail');
+    const btnRetry = document.getElementById('btn-retry');
+    const pipelineDiv = document.getElementById('pipeline');
 
     let mediaRecorder;
     let recordedChunks = [];
@@ -332,13 +443,54 @@
     let recordingTimeout;
     let countdownInterval;
 
-    // --- 1. View Toggling ---
+    // ── Pipeline helpers ──────────────────────────────────────────
+    function resetPipeline() {
+      pipelineDiv.classList.remove('visible');
+      for (let i = 1; i <= 6; i++) {
+        const el = document.getElementById(`step-${i}`);
+        el.className = 'step';
+        // Reset label to default
+      }
+    }
+
+    function activateStep(stepNum, label) {
+      const el = document.getElementById(`step-${stepNum}`);
+      if (!el) return;
+      el.className = 'step active';
+      if (label) el.querySelector('.step-label').textContent = label;
+    }
+
+    function completeStep(stepNum, label) {
+      const el = document.getElementById(`step-${stepNum}`);
+      if (!el) return;
+      el.className = 'step done';
+      if (label) el.querySelector('.step-label').textContent = label;
+    }
+
+    function failStep(stepNum, label) {
+      const el = document.getElementById(`step-${stepNum}`);
+      if (!el) return;
+      el.className = 'step fail';
+      if (label) el.querySelector('.step-label').textContent = label;
+    }
+
+    // ── Retry handler ─────────────────────────────────────────────
+    btnRetry.addEventListener('click', () => {
+      rejectionBanner.classList.remove('visible');
+      resetPipeline();
+      statusDiv.textContent = '';
+      statusDiv.className = '';
+    });
+
+    // ── 1. View Toggling ──────────────────────────────────────────
     tabUpload.addEventListener('click', () => {
       tabUpload.classList.add('active');
       tabCamera.classList.remove('active');
       uploadSection.style.display = 'block';
       cameraSection.style.display = 'none';
       stopCamera();
+      rejectionBanner.classList.remove('visible');
+      resetPipeline();
     });
 
     tabCamera.addEventListener('click', async () => {
@@ -347,17 +499,19 @@
       uploadSection.style.display = 'none';
       cameraSection.style.display = 'block';
       await startCamera();
+      rejectionBanner.classList.remove('visible');
+      resetPipeline();
     });
 
-    // --- 2. Camera Logic ---
+    // ── 2. Camera Logic ───────────────────────────────────────────
     async function startCamera() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         cameraPreview.srcObject = stream;
-        statusDiv.textContent = "";
+        statusDiv.textContent = '';
       } catch (err) {
         statusDiv.className = 'error';
-        statusDiv.textContent = "❌ Error: Could not access camera.";
+        statusDiv.textContent = '❌ Error: Could not access camera.';
       }
     }
 
@@ -369,8 +523,10 @@
 
     btnStartRec.addEventListener('click', () => {
       recordedChunks = [];
+      rejectionBanner.classList.remove('visible');
+      resetPipeline();
       mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-      
+
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) recordedChunks.push(e.data);
       };
@@ -380,13 +536,11 @@
         processVideo(blob);
       };
 
-      // UI States
       mediaRecorder.start();
       btnStartRec.style.display = 'none';
       btnStopRec.style.display = 'flex';
       recIndicator.classList.add('active');
-      
-      // Enforce 5 Second Limit
+
       let secondsLeft = 5;
       statusDiv.className = 'loading';
       statusDiv.textContent = `🔴 Recording... (${secondsLeft}s)`;
@@ -398,38 +552,26 @@
       }, 1000);
 
       recordingTimeout = setTimeout(() => {
-        if (mediaRecorder.state === 'recording') {
-          stopRecordingActions();
-        }
+        if (mediaRecorder.state === 'recording') stopRecordingActions();
       }, 5000);
     });
 
-    btnStopRec.addEventListener('click', () => {
-      stopRecordingActions();
-    });
+    btnStopRec.addEventListener('click', () => stopRecordingActions());
 
     function stopRecordingActions() {
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-      }
-      
-      // Cleanup timers
+      if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
       clearTimeout(recordingTimeout);
       clearInterval(countdownInterval);
-      
-      // UI Reset
       btnStartRec.style.display = 'flex';
       btnStopRec.style.display = 'none';
       recIndicator.classList.remove('active');
     }
 
-    // --- 3. Upload & Drag Logic ---
+    // ── 3. Upload & Drag Logic ────────────────────────────────────
     dropZone.addEventListener('click', () => fileInput.click());
-
     fileInput.addEventListener('change', (e) => {
       if (e.target.files.length > 0) processVideo(e.target.files[0]);
     });
-
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
     dropZone.addEventListener('drop', (e) => {
@@ -438,37 +580,105 @@
       if (e.dataTransfer.files.length > 0) processVideo(e.dataTransfer.files[0]);
     });
 
-    // --- 4. Main Processing Function ---
+    // ── 4. Main Processing (SSE streaming) ────────────────────────
     async function processVideo(blobOrFile) {
+      // Reset UI
+      rejectionBanner.classList.remove('visible');
+      resetPipeline();
+      pipelineDiv.classList.add('visible');
       statusDiv.className = 'loading';
-      statusDiv.textContent = '🚀 Compiling via Gemini...';
-      
-      // Disable interaction
+      statusDiv.textContent = 'Uploading video...';
+
       dropZone.style.opacity = '0.5';
       dropZone.style.pointerEvents = 'none';
       btnStartRec.disabled = true;
 
       const formData = new FormData();
-      // Ensure we pass a filename so Flask handles it as a file
       formData.append('video', blobOrFile, 'capture.webm');
 
-      try {
-        const response = await fetch('http://127.0.0.1:5000/upload', {
-          method: 'POST',
-          body: formData
-        });
+      // Track which step was last activated so we can mark it done
+      let lastStep = 0;
 
-        const data = await response.json();
-        if (response.ok) {
-          statusDiv.className = 'success';
-          statusDiv.textContent = `✅ ${data.message} (${data.commands_generated} frames)`;
-        } else {
+      try {
+        const response = await fetch('/upload', { method: 'POST', body: formData });
+
+        if (!response.ok && !response.headers.get('content-type')?.includes('text/event-stream')) {
+          // Non-streaming error (e.g. 400 bad request)
+          const data = await response.json();
           statusDiv.className = 'error';
-          statusDiv.textContent = `❌ Error: ${data.error || 'Server processing failed'}`;
+          statusDiv.textContent = `❌ ${data.error || 'Upload failed'}`;
+          return;
+        }
+
+        // Read the SSE stream
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // SSE events are separated by double newlines
+          const parts = buffer.split('\n\n');
+          buffer = parts.pop(); // keep incomplete chunk
+
+          for (const part of parts) {
+            if (!part.trim()) continue;
+            let eventType = 'message';
+            let dataStr = '';
+
+            for (const line of part.split('\n')) {
+              if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+              else if (line.startsWith('data: ')) dataStr = line.slice(6);
+            }
+
+            if (!dataStr) continue;
+            const payload = JSON.parse(dataStr);
+
+            if (eventType === 'progress') {
+              // Complete previous step
+              if (lastStep > 0 && lastStep < payload.step) {
+                completeStep(lastStep);
+              }
+              activateStep(payload.step, payload.message);
+              lastStep = payload.step;
+              statusDiv.className = 'loading';
+              statusDiv.textContent = `${payload.icon} ${payload.message}`;
+
+            } else if (eventType === 'done') {
+              // Mark last step done
+              completeStep(lastStep);
+              statusDiv.className = 'success';
+              statusDiv.textContent = `🎯 ${payload.message} (${payload.commands_generated} keyframes)`;
+
+            } else if (eventType === 'rejected') {
+              // Violence rejection
+              if (lastStep > 0) failStep(lastStep);
+              failStep(2, 'Content flagged as violent');
+              statusDiv.className = 'error';
+              statusDiv.textContent = '';
+
+              const conf = payload.filter ? `${payload.filter.confidence}%` : '';
+              rejectionTitle.textContent = '⛔ Violent Content Detected';
+              rejectionDetail.innerHTML =
+                `The video was classified as <strong style="color:#fca5a5">${payload.filter?.label || 'VIOLENT'}</strong>` +
+                (conf ? ` with <strong>${conf}</strong> confidence.` : '.') +
+                `<br>Please re-record or upload a different, non-violent motion video.`;
+              rejectionBanner.classList.add('visible');
+
+            } else if (eventType === 'error') {
+              if (lastStep > 0) failStep(lastStep, payload.message);
+              statusDiv.className = 'error';
+              statusDiv.textContent = `❌ ${payload.message}`;
+            }
+          }
         }
       } catch (err) {
         statusDiv.className = 'error';
-        statusDiv.textContent = `❌ Network Error: Could not reach the Flask server.`;
+        statusDiv.textContent = '❌ Network Error: Could not reach the server.';
       } finally {
         fileInput.value = '';
         dropZone.style.opacity = '1';
