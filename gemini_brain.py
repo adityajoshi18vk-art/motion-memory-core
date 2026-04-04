@@ -67,21 +67,20 @@ def compile_motion(video_path):
         print(f"  🎬  Uploading '{video_path}'...")
         video_file = client.files.upload(file=video_path)
         
-        # Wait for the vision pipeline to process
         while video_file.state.name == "PROCESSING":
             print(".", end="", flush=True)
             time.sleep(2)
             video_file = client.files.get(name=video_file.name)
 
-        # Catch if the video itself failed to upload/process
         if video_file.state.name == "FAILED":
-            print("  ❌  Google's servers failed to process this video file format!")
-            return []
+            raise ValueError("Google's servers failed to process this video file format!")
 
         print("\n  🤖  Generating Dynamic Kinematics (God Mode)...")
         
-        # --- THE FIX: DISABLE ALL 4 SAFETY FILTERS ---
+        # --- THE FIX: PROPER SYSTEM INSTRUCTION & TEMPERATURE ---
         unfiltered_config = types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,  
+            temperature=0.2,                   # Forces precise JSON math
             safety_settings=[
                 types.SafetySetting(
                     category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
@@ -104,18 +103,13 @@ def compile_motion(video_path):
 
         response = client.models.generate_content(
             model='gemini-2.5-flash',
-            contents=[video_file, SYSTEM_PROMPT],
+            contents=[video_file], 
             config=unfiltered_config
         )
         
-        # --- DIAGNOSTIC CATCH: Tell us exactly WHY it failed ---
         if getattr(response, 'text', None) is None:
-            print("  ❌  AI returned NO text!")
-            # This prints the raw response object so we can read the finish_reason (e.g. SAFETY, MAX_TOKENS, etc)
-            print(f"  🔍  RAW DEBUG INFO: {response}") 
-            return []
+            raise ValueError(f"AI returned NO text! Raw Debug Info: {response}")
             
-        # --- ROBUST JSON EXTRACTION ---
         raw_text = response.text.strip()
         clean_text = raw_text
         
@@ -130,7 +124,6 @@ def compile_motion(video_path):
 
         commands = json.loads(clean_text)
 
-        # Safety: Ensure duration exists for the robot loop
         for cmd in commands:
             if "duration" not in cmd:
                 cmd["duration"] = 1.0
@@ -138,10 +131,12 @@ def compile_motion(video_path):
         print(f"  ✅  Successfully compiled {len(commands)} dynamic movements.")
         return commands
         
-    except json.JSONDecodeError as je:
-        print(f"  ❌  JSON formatting error from AI: {je}")
-        print(f"  Raw Output was: {raw_text[:200]}...") 
-        return []
     except Exception as e:
-        print(f"  ❌  AI Pipeline Error: {e}")
+        error_msg = str(e)
+        print(f"  ❌  AI Pipeline Error: {error_msg}")
+        
+        if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+            print("  💡  API Quota Exceeded! Please wait 60 seconds, and ensure your video is under 3 seconds long.")
+            return []
+            
         return []

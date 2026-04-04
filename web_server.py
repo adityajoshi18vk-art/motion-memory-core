@@ -15,7 +15,6 @@ UDP_PORT = 5005
 @app.route('/')
 def index():
     """Serves the Web Dashboard Interface"""
-    # Use absolute path to avoid 404 in certain working directory setups
     return send_file(os.path.join(os.path.dirname(__file__), 'index.html'))
 
 @app.route('/upload', methods=['POST'])
@@ -28,7 +27,6 @@ def upload_video():
     commands = []
 
     try:
-        # 1. Check if the post request has the file part
         if 'file' not in request.files and 'video' not in request.files:
             return jsonify({"error": "No file part in the request"}), 400
         
@@ -37,18 +35,23 @@ def upload_video():
         if file.filename == '':
             return jsonify({"error": "No selected file"}), 400
 
-        # 2. Save the file locally
         file.save(temp_video_path)
         print(f"\n📂 Video saved temporarily as {temp_video_path}")
 
-        # 3. Call the Gemini AI to compile motion keyframes
         print("🧠 Calling Gemini Brain for motion compilation...")
         commands = gemini_brain.compile_motion(temp_video_path)
 
         if not commands:
             raise ValueError("Gemini failed to generate kinematics. Check API or prompt.")
 
-        # 4. If commands are successfully generated, send them via UDP
+        # --- 🐛 START DEBUG OUTPUT ---
+        print("\n" + "="*40)
+        print(" 🐛 DEBUG: AI KINEMATIC COMMANDS ")
+        print("="*40)
+        print(json.dumps(commands, indent=4))
+        print("="*40 + "\n")
+        # --- END DEBUG OUTPUT ---
+
         print("📤 Sending parsed kinematic sequence via UDP...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         response_data = json.dumps(commands).encode('utf-8')
@@ -69,7 +72,6 @@ def upload_video():
         }), 500
 
     finally:
-        # 5. Clean up the temporary file, ensuring it exists before deleting
         if os.path.exists(temp_video_path):
             try:
                 os.remove(temp_video_path)
