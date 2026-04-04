@@ -3,6 +3,7 @@ import json
 import time
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 
 # Load environment variables (API Key)
 load_dotenv()
@@ -59,30 +60,65 @@ The user is saluting. To avoid collision, I must first raise the RShoulderPitch 
 """
 
 def compile_motion(video_path):
-    print("\n  🚀  Connecting to Gemini 2.5 Flash...")
+    print("  🚀  Connecting to Gemini 2.5 Flash...")
     client = genai.Client(api_key=GEMINI_API_KEY)
 
     try:
         print(f"  🎬  Uploading '{video_path}'...")
         video_file = client.files.upload(file=video_path)
         
-        # Wait for the vision pipeline to finish processing the video
+        # Wait for the vision pipeline to process
         while video_file.state.name == "PROCESSING":
             print(".", end="", flush=True)
             time.sleep(2)
             video_file = client.files.get(name=video_file.name)
 
-        print("\n  🤖  Generating Dynamic Kinematics (Dual-Arm Support)...")
+        # Catch if the video itself failed to upload/process
+        if video_file.state.name == "FAILED":
+            print("  ❌  Google's servers failed to process this video file format!")
+            return []
+
+        print("\n  🤖  Generating Dynamic Kinematics (God Mode)...")
+        
+        # --- THE FIX: DISABLE ALL 4 SAFETY FILTERS ---
+        unfiltered_config = types.GenerateContentConfig(
+            safety_settings=[
+                types.SafetySetting(
+                    category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                    threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                ),
+                types.SafetySetting(
+                    category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                    threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                ),
+                types.SafetySetting(
+                    category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                    threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                ),
+                types.SafetySetting(
+                    category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                    threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                ),
+            ]
+        )
+
         response = client.models.generate_content(
             model='gemini-2.5-flash',
-            contents=[video_file, SYSTEM_PROMPT]
+            contents=[video_file, SYSTEM_PROMPT],
+            config=unfiltered_config
         )
         
-        # --- THE FIX: ROBUST JSON EXTRACTION ---
+        # --- DIAGNOSTIC CATCH: Tell us exactly WHY it failed ---
+        if getattr(response, 'text', None) is None:
+            print("  ❌  AI returned NO text!")
+            # This prints the raw response object so we can read the finish_reason (e.g. SAFETY, MAX_TOKENS, etc)
+            print(f"  🔍  RAW DEBUG INFO: {response}") 
+            return []
+            
+        # --- ROBUST JSON EXTRACTION ---
         raw_text = response.text.strip()
         clean_text = raw_text
         
-        # Remove any Markdown code blocks and ignore the <THOUGHT_PROCESS>
         if "```" in raw_text:
             parts = raw_text.split("```")
             for part in parts:
@@ -94,7 +130,7 @@ def compile_motion(video_path):
 
         commands = json.loads(clean_text)
 
-        # Safety check: Ensure every command has a duration for the robot loop
+        # Safety: Ensure duration exists for the robot loop
         for cmd in commands:
             if "duration" not in cmd:
                 cmd["duration"] = 1.0
@@ -104,7 +140,7 @@ def compile_motion(video_path):
         
     except json.JSONDecodeError as je:
         print(f"  ❌  JSON formatting error from AI: {je}")
-        print(f"  Raw Output was: {raw_text[:200]}...") # Print start of error for debugging
+        print(f"  Raw Output was: {raw_text[:200]}...") 
         return []
     except Exception as e:
         print(f"  ❌  AI Pipeline Error: {e}")

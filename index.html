@@ -1,1093 +1,482 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Motion Command Center</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Motion Memory Core</title>
+  <meta name="description" content="Upload human motion video for Gemini neural compilation">
   <style>
-    /* ── Reset & Base ────────────────────────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
 
-    :root {
-      --bg-deep:      #080c14;
-      --bg-panel:     #0d1220;
-      --bg-card:      #111827;
-      --bg-terminal:  #090d18;
-      --border:       #1e2d45;
-      --border-glow:  #1a3a5c;
-      --accent:       #00d4ff;
-      --accent-dim:   #0099bb;
-      --accent-glow:  rgba(0, 212, 255, 0.15);
-      --red:          #ff4560;
-      --red-glow:     rgba(255, 69, 96, 0.2);
-      --green:        #00e396;
-      --yellow:       #f5a623;
-      --text-primary: #e2e8f0;
-      --text-muted:   #4a6180;
-      --text-dim:     #2a3f58;
-      --font-ui:      'Outfit', sans-serif;
-      --font-mono:    'JetBrains Mono', monospace;
-      --radius:       12px;
-      --radius-sm:    8px;
-    }
-
-    html, body {
-      height: 100%;
-      background: var(--bg-deep);
-      color: var(--text-primary);
-      font-family: var(--font-ui);
-      overflow-x: hidden;
-    }
-
-    /* ── Animated grid background ─────────────────────────────────────── */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image:
-        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
-      background-size: 40px 40px;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* ── Layout ───────────────────────────────────────────────────────── */
-    .app {
-      position: relative;
-      z-index: 1;
-      min-height: 100vh;
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      color: #f8fafc;
+      height: 100vh;
       display: flex;
-      flex-direction: column;
-      padding: 24px 28px;
-      gap: 20px;
-      max-width: 1600px;
-      margin: 0 auto;
-    }
-
-    /* ── Header ───────────────────────────────────────────────────────── */
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 24px;
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      gap: 16px;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .logo-icon {
-      width: 40px;
-      height: 40px;
-      background: linear-gradient(135deg, #0077aa, #00d4ff);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
       justify-content: center;
-      font-size: 20px;
-      box-shadow: 0 0 20px rgba(0,212,255,0.3);
-      flex-shrink: 0;
-    }
-
-    .header-title h1 {
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      color: #fff;
-    }
-
-    .header-title p {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      margin-top: 2px;
-    }
-
-    .header-badges {
-      display: flex;
       align-items: center;
-      gap: 10px;
+      overflow: hidden;
     }
 
-    .badge {
+    /* Decorative glowing background elements */
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    .blob-1 {
+      width: 350px;
+      height: 350px;
+      background: #3b82f6;
+      top: -100px;
+      left: -100px;
+    }
+
+    .blob-2 {
+      width: 400px;
+      height: 400px;
+      background: #8b5cf6;
+      bottom: -150px;
+      right: -100px;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 24px;
+      padding: 30px 40px;
+      text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      max-width: 500px;
+      width: 95%;
+      position: relative;
+      z-index: 10;
+    }
+
+    h1 {
+      margin: 0 0 5px 0;
+      font-size: 26px;
+      font-weight: 800;
+      background: linear-gradient(to right, #60a5fa, #c084fc);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subtitle {
+      color: #94a3b8;
+      font-size: 13px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    /* Tabs/Toggle */
+    .view-selector {
       display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 4px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    .view-btn {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .view-btn.active {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+    }
+
+    /* Drag and Drop Zone */
+    .drop-zone {
+      border: 2px dashed rgba(96, 165, 250, 0.3);
+      border-radius: 16px;
+      padding: 60px 20px;
+      background: rgba(59, 130, 246, 0.03);
+      transition: all 0.3s ease;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+
+    .drop-zone.dragover {
+      background: rgba(59, 130, 246, 0.1);
+      border-color: #60a5fa;
+      transform: scale(1.01);
+    }
+
+    /* Camera Section */
+    #camera-section {
+      display: none;
+      margin-bottom: 20px;
+    }
+
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #000;
+      aspect-ratio: 16/9;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 15px;
+    }
+
+    #camera-preview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .rec-indicator {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      display: none;
       align-items: center;
       gap: 6px;
-      padding: 5px 12px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 4px 10px;
       border-radius: 20px;
-      font-size: 11px;
-      font-family: var(--font-mono);
-      font-weight: 600;
-      letter-spacing: 0.5px;
+      color: #ef4444;
+      font-size: 12px;
+      font-weight: 800;
     }
 
-    .badge-model {
-      background: rgba(0,212,255,0.08);
-      border: 1px solid rgba(0,212,255,0.2);
-      color: var(--accent);
+    .rec-indicator.active {
+      display: flex;
     }
 
-    .badge-status {
-      background: rgba(0,227,150,0.08);
-      border: 1px solid rgba(0,227,150,0.25);
-      color: var(--green);
-    }
-
-    .badge-dot {
-      width: 6px;
-      height: 6px;
+    .rec-dot {
+      width: 8px;
+      height: 8px;
+      background: #ef4444;
       border-radius: 50%;
-      background: currentColor;
-      animation: pulse 2s infinite;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .camera-controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+      display: none;
+    }
+
+    .upload-icon {
+      margin-bottom: 15px;
+      color: #8b5cf6;
+    }
+
+    .upload-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin: 0;
+    }
+
+    .upload-subtext {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 8px;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    #status {
+      font-size: 14px;
+      font-weight: 600;
+      min-height: 24px;
+      transition: color 0.3s ease;
+    }
+
+    .loading {
+      color: #60a5fa;
+      animation: pulse 1.5s infinite;
+    }
+
+    .success {
+      color: #34d399;
+    }
+
+    .error {
+      color: #f87171;
     }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50%       { opacity: 0.3; }
-    }
-
-    /* ── Control Bar ──────────────────────────────────────────────────── */
-    .control-bar {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 18px 24px;
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-    }
-
-    #record-btn {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 28px;
-      background: linear-gradient(135deg, #cc1f3a, var(--red));
-      border: none;
-      border-radius: var(--radius-sm);
-      color: #fff;
-      font-family: var(--font-ui);
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      cursor: pointer;
-      transition: all 0.25s ease;
-      box-shadow: 0 0 20px var(--red-glow);
-      position: relative;
-      overflow: hidden;
-    }
-
-    #record-btn::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-
-    #record-btn:hover::after { opacity: 1; }
-    #record-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 30px var(--red-glow); }
-    #record-btn:active { transform: translateY(0); }
-
-    #record-btn.loading {
-      background: linear-gradient(135deg, #1a2a40, #1e3050);
-      box-shadow: 0 0 20px var(--accent-glow);
-      pointer-events: none;
-    }
-
-    .btn-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #fff;
-      flex-shrink: 0;
-    }
-
-    #record-btn.loading .btn-dot {
-      background: var(--accent);
-      animation: spin-dot 0.8s linear infinite;
-    }
-
-    @keyframes spin-dot {
-      0%   { transform: scale(1); opacity: 1; }
-      50%  { transform: scale(0.4); opacity: 0.4; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-
-    .separator { width: 1px; height: 32px; background: var(--border); }
-
-    .stat-pill {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .stat-pill span:first-child {
-      font-size: 10px;
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .stat-pill span:last-child {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-primary);
-      font-family: var(--font-mono);
-    }
-
-    .progress-wrap {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-left: 8px;
-    }
-
-    #progress-bar-bg {
-      flex: 1;
-      height: 4px;
-      background: var(--border);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    #progress-bar-fill {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, var(--accent-dim), var(--accent));
-      border-radius: 4px;
-      transition: width 0.1s linear;
-      box-shadow: 0 0 8px var(--accent);
-    }
-
-    #progress-label {
-      font-size: 11px;
-      font-family: var(--font-mono);
-      color: var(--text-muted);
-      min-width: 36px;
-      text-align: right;
-    }
-
-    /* ── Main Split ───────────────────────────────────────────────────── */
-    .main-split {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      flex: 1;
-    }
-
-    /* ── Panel base ───────────────────────────────────────────────────── */
-    .panel {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 18px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .panel-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      font-family: var(--font-mono);
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .panel-title-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 8px var(--accent);
-    }
-
-    /* ── Video Feed ───────────────────────────────────────────────────── */
-    .video-panel { position: relative; }
-
-    .video-body {
-      flex: 1;
-      position: relative;
-      background: #05080f;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 380px;
-    }
-
-    .video-placeholder {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-      text-align: center;
-      padding: 40px;
-    }
-
-    .video-icon {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      background: rgba(0,212,255,0.07);
-      border: 1px solid rgba(0,212,255,0.15);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 30px;
-      animation: float 3s ease-in-out infinite;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50%       { transform: translateY(-8px); }
-    }
-
-    .video-placeholder h3 {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .video-placeholder p {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.5;
-      max-width: 260px;
-    }
-
-    /* Scanline overlay */
-    .video-body::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 3px,
-        rgba(0,0,0,0.08) 3px,
-        rgba(0,0,0,0.08) 4px
-      );
-      pointer-events: none;
-    }
-
-    /* Corner brackets */
-    .corner {
-      position: absolute;
-      width: 20px; height: 20px;
-      border-color: var(--accent);
-      border-style: solid;
-      opacity: 0.5;
-    }
-    .corner-tl { top: 12px; left: 12px; border-width: 2px 0 0 2px; }
-    .corner-tr { top: 12px; right: 12px; border-width: 2px 2px 0 0; }
-    .corner-bl { bottom: 12px; left: 12px; border-width: 0 0 2px 2px; }
-    .corner-br { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; }
-
-    /* Recording overlay */
-    .rec-overlay {
-      display: none;
-      position: absolute;
-      top: 12px; right: 16px;
-      align-items: center;
-      gap: 6px;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--red);
-    }
-
-    .rec-overlay.visible { display: flex; }
-
-    .rec-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--red);
-      box-shadow: 0 0 8px var(--red);
-      animation: rec-blink 1s step-start infinite;
-    }
-
-    @keyframes rec-blink {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0; }
-    }
-
-    /* Video metadata bar */
-    .video-meta {
-      display: flex;
-      gap: 20px;
-      padding: 10px 18px;
-      border-top: 1px solid var(--border);
-      background: rgba(0,0,0,0.2);
-    }
-
-    .meta-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      font-family: var(--font-mono);
-      color: var(--text-muted);
-    }
-
-    .meta-item span { color: var(--accent); }
-
-    /* ── Terminal ─────────────────────────────────────────────────────── */
-    .terminal-panel { position: relative; }
-
-    .terminal-dots {
-      display: flex;
-      gap: 6px;
-    }
-
-    .dot { width: 10px; height: 10px; border-radius: 50%; }
-    .dot-red    { background: #ff5f56; }
-    .dot-yellow { background: #ffbd2e; }
-    .dot-green  { background: #27c93f; }
-
-    .terminal-body {
-      flex: 1;
-      background: var(--bg-terminal);
-      padding: 16px 20px;
-      font-family: var(--font-mono);
-      font-size: 13px;
-      overflow-y: auto;
-      min-height: 380px;
-      max-height: 480px;
-      scroll-behavior: smooth;
-    }
-
-    .terminal-body::-webkit-scrollbar { width: 4px; }
-    .terminal-body::-webkit-scrollbar-track { background: transparent; }
-    .terminal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-    .t-line {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 6px;
-      opacity: 0;
-      transform: translateY(4px);
-      animation: line-in 0.25s ease forwards;
-    }
-
-    @keyframes line-in {
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .t-ts   { color: var(--text-dim); flex-shrink: 0; }
-    .t-sys  { color: var(--text-muted); }
-    .t-info { color: var(--accent); }
-    .t-ok   { color: var(--green); }
-    .t-err  { color: var(--red); }
-    .t-warn { color: var(--yellow); }
-    .t-data { color: #c792ea; }
-    .t-cmd  { color: var(--yellow); font-weight: 600; }
-    .t-val  { color: #80cbc4; }
-
-    .json-block {
-      background: rgba(0,212,255,0.04);
-      border: 1px solid rgba(0,212,255,0.1);
-      border-radius: 6px;
-      padding: 12px 14px;
-      margin: 8px 0;
-      line-height: 1.7;
-      opacity: 0;
-      animation: line-in 0.3s ease 0.1s forwards;
-    }
-
-    .json-key   { color: #82aaff; }
-    .json-str   { color: #c3e88d; }
-    .json-num   { color: #f78c6c; }
-    .json-bool  { color: #ff9cac; }
-    .json-null  { color: var(--text-muted); }
-    .json-arr   { color: #c792ea; }
-    .json-cmd   { color: var(--yellow); font-weight: 600; }
-
-    .cursor {
-      display: inline-block;
-      width: 8px; height: 14px;
-      background: var(--accent);
-      margin-left: 4px;
-      vertical-align: middle;
-      animation: caret 1s step-start infinite;
-    }
-
-    @keyframes caret {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0; }
-    }
-
-    .terminal-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 18px;
-      border-top: 1px solid var(--border);
-      background: rgba(0,0,0,0.2);
-    }
-
-    .tf-left {
-      font-size: 11px;
-      font-family: var(--font-mono);
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    #cmd-count {
-      color: var(--yellow);
-      font-weight: 600;
-    }
-
-    #clear-btn {
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-      font-size: 11px;
-      padding: 4px 10px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    #clear-btn:hover {
-      border-color: rgba(0,212,255,0.3);
-      color: var(--accent);
-      background: var(--accent-glow);
-    }
-
-    /* ── Command sequence pills ───────────────────────────────────────── */
-    .cmd-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin: 6px 0;
-    }
-
-    .cmd-pill {
-      padding: 3px 10px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-family: var(--font-mono);
-      font-weight: 600;
-      background: rgba(245,166,35,0.1);
-      border: 1px solid rgba(245,166,35,0.3);
-      color: var(--yellow);
-      animation: pill-in 0.3s ease both;
-    }
-
-    @keyframes pill-in {
-      from { opacity: 0; transform: scale(0.8); }
-      to   { opacity: 1; transform: scale(1); }
-    }
-
-    /* ── Footer ───────────────────────────────────────────────────────── */
-    footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 24px;
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 11px;
-      font-family: var(--font-mono);
-      color: var(--text-dim);
-    }
-
-    footer span { color: var(--text-muted); }
-
-    /* ── Responsive ───────────────────────────────────────────────────── */
-    @media (max-width: 900px) {
-      .main-split { grid-template-columns: 1fr; }
-      .header-badges { display: none; }
+      50% { opacity: 0.5; }
     }
   </style>
 </head>
+
 <body>
-<div class="app">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
 
-  <!-- ── Header ── -->
-  <header>
-    <div class="header-left">
-      <div class="logo-icon">🤖</div>
-      <div class="header-title">
-        <h1>Motion Command Center</h1>
-        <p>Kinematic Compiler v3.0 · MediaPipe Vision Engine</p>
+  <div class="container">
+    <h1>Motion Memory Core</h1>
+    <p class="subtitle">Neural Kinematic Compiler v1.2</p>
+
+    <div class="view-selector">
+      <button class="view-btn active" id="tab-upload">📁 Upload Video</button>
+      <button class="view-btn" id="tab-camera">🎥 Live Capture</button>
+    </div>
+
+    <!-- Upload Section -->
+    <div id="upload-section">
+      <div class="drop-zone" id="drop-zone">
+        <svg class="upload-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <p class="upload-text">Click to browse or drag video here</p>
+        <p class="upload-subtext">Supports MP4, MOV, AVI</p>
+      </div>
+      <input type="file" id="video-upload" accept="video/*">
+    </div>
+
+    <!-- Camera Section -->
+    <div id="camera-section">
+      <div class="video-wrap">
+        <video id="camera-preview" autoplay muted playsinline></video>
+        <div class="rec-indicator" id="rec-indicator">
+          <div class="rec-dot"></div> REC
+        </div>
+      </div>
+      <div class="camera-controls">
+        <button class="btn btn-primary" id="start-rec">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+          Start Recording
+        </button>
+        <button class="btn btn-danger" id="stop-rec">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
+          Stop & Compile
+        </button>
       </div>
     </div>
-    <div class="header-badges">
-      <div class="badge badge-model">
-        <div class="badge-dot"></div>
-        mediapipe-pose
-      </div>
-      <div class="badge badge-status">
-        <div class="badge-dot"></div>
-        SYSTEM READY
-      </div>
-    </div>
-  </header>
 
-  <!-- ── Control Bar ── -->
-  <div class="control-bar">
-    <button id="record-btn">
-      <div class="btn-dot"></div>
-      <span id="btn-label">Record Motion</span>
-    </button>
-
-    <div class="separator"></div>
-
-    <div class="stat-pill">
-      <span>Endpoint</span>
-      <span id="stat-endpoint">:5000 / trigger_learning</span>
-    </div>
-
-    <div class="separator"></div>
-
-    <div class="stat-pill">
-      <span>Last Run</span>
-      <span id="stat-last">—</span>
-    </div>
-
-    <div class="separator"></div>
-
-    <div class="stat-pill">
-      <span>Status</span>
-      <span id="stat-status" style="color:var(--text-muted)">IDLE</span>
-    </div>
-
-    <div class="progress-wrap">
-      <div id="progress-bar-bg">
-        <div id="progress-bar-fill"></div>
-      </div>
-      <div id="progress-label">—</div>
-    </div>
+    <div id="status"></div>
   </div>
 
-  <!-- ── Split Layout ── -->
-  <div class="main-split">
+  <script>
+    const fileInput = document.getElementById('video-upload');
+    const statusDiv = document.getElementById('status');
+    const dropZone = document.getElementById('drop-zone');
+    const tabUpload = document.getElementById('tab-upload');
+    const tabCamera = document.getElementById('tab-camera');
+    const uploadSection = document.getElementById('upload-section');
+    const cameraSection = document.getElementById('camera-section');
+    const cameraPreview = document.getElementById('camera-preview');
+    const btnStartRec = document.getElementById('start-rec');
+    const btnStopRec = document.getElementById('stop-rec');
+    const recIndicator = document.getElementById('rec-indicator');
 
-    <!-- Left: Video Feed -->
-    <div class="panel video-panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          <div class="panel-title-dot"></div>
-          Live Video Feed
-        </div>
-        <div class="meta-item" style="font-size:11px">
-          <span id="feed-res">1280×720</span> · <span id="feed-fps">30 fps</span>
-        </div>
-      </div>
-      <div class="video-body" id="video-body">
-        <video id="webcam" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; position:absolute; inset:0; z-index:0; display:none;"></video>
-        <div class="corner corner-tl"></div>
-        <div class="corner corner-tr"></div>
-        <div class="corner corner-bl"></div>
-        <div class="corner corner-br"></div>
-        <div class="rec-overlay" id="rec-overlay">
-          <div class="rec-dot"></div>
-          REC
-        </div>
-        <div class="video-placeholder" id="video-placeholder">
-          <div class="video-icon">📷</div>
-          <h3>Camera Feed Inactive</h3>
-          <p>Press <strong>Record Motion</strong> to activate the webcam and begin kinematic capture.</p>
-        </div>
-      </div>
-      <div class="video-meta">
-        <div class="meta-item">CODEC <span>VP8</span></div>
-        <div class="meta-item">FORMAT <span>WEBM</span></div>
-        <div class="meta-item">DURATION <span id="rec-duration">0.0s</span></div>
-        <div class="meta-item">SIZE <span id="rec-size">—</span></div>
-      </div>
-    </div>
+    let mediaRecorder;
+    let recordedChunks = [];
+    let stream;
+    let recordingTimeout;
+    let countdownInterval;
 
-    <!-- Right: Terminal -->
-    <div class="panel terminal-panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          <div class="terminal-dots">
-            <div class="dot dot-red"></div>
-            <div class="dot dot-yellow"></div>
-            <div class="dot dot-green"></div>
-          </div>
-          &nbsp;Kinematic Compiler Output
-        </div>
-        <button id="clear-btn">CLEAR</button>
-      </div>
-      <div class="terminal-body" id="terminal">
-        <!-- lines injected here -->
-      </div>
-      <div class="terminal-footer">
-        <div class="tf-left">
-          COMMANDS COMPILED: <span id="cmd-count">0</span>
-          &nbsp;·&nbsp; SESSION LINES: <span id="line-count">0</span>
-        </div>
-        <div class="tf-left">
-          MODEL: <span style="color:var(--accent)">mediapipe-pose</span>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- ── Footer ── -->
-  <footer>
-    <span>Motion Memory Core · Kinematic Compiler Pipeline</span>
-    <span id="sys-time"></span>
-  </footer>
-
-</div>
-
-<script>
-  /* ── Helpers ──────────────────────────────────────────────────────────── */
-  const terminal   = document.getElementById('terminal');
-  const cmdCount   = document.getElementById('cmd-count');
-  const lineCount  = document.getElementById('line-count');
-  const recBtn     = document.getElementById('record-btn');
-  const btnLabel   = document.getElementById('btn-label');
-  const btnDot     = document.querySelector('.btn-dot');
-  const recOverlay = document.getElementById('rec-overlay');
-  const statStatus = document.getElementById('stat-status');
-  const statLast   = document.getElementById('stat-last');
-  const progressFill  = document.getElementById('progress-bar-fill');
-  const progressLabel = document.getElementById('progress-label');
-  const recDuration   = document.getElementById('rec-duration');
-  const recSize       = document.getElementById('rec-size');
-
-  const webcam = document.getElementById('webcam');
-  const videoPlaceholder = document.getElementById('video-placeholder');
-  let stream = null;
-  let mediaRecorder = null;
-  let recordedChunks = [];
-
-  let totalCmds  = 0;
-  let totalLines = 0;
-  let isRecording = false;
-  let progressTimer = null;
-  let durationTimer = null;
-  let durationSec = 0;
-
-  /* ── Clock ─────────────────────────────────────────────────────────── */
-  const sysTime = document.getElementById('sys-time');
-  function updateClock() {
-    sysTime.textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
-  }
-  updateClock();
-  setInterval(updateClock, 1000);
-
-  /* ── Terminal write helpers ─────────────────────────────────────────── */
-  function ts() {
-    return new Date().toLocaleTimeString('en-GB', { hour12: false });
-  }
-
-  function writeLine(content, delay = 0) {
-    totalLines++;
-    lineCount.textContent = totalLines;
-    const line = document.createElement('div');
-    line.className = 't-line';
-    line.style.animationDelay = delay + 'ms';
-    line.innerHTML = `<span class="t-ts">[${ts()}]</span>${content}`;
-    terminal.appendChild(line);
-    setTimeout(() => terminal.scrollTop = terminal.scrollHeight, delay + 50);
-  }
-
-  function writeSystem(msg)  { writeLine(`<span class="t-sys">SYS  &gt;</span> <span class="t-sys">${msg}</span>`); }
-  function writeInfo(msg)    { writeLine(`<span class="t-info">INFO &gt;</span> <span class="t-info">${msg}</span>`); }
-  function writeOk(msg)      { writeLine(`<span class="t-ok">OK   &gt;</span> <span class="t-ok">${msg}</span>`); }
-  function writeError(msg)   { writeLine(`<span class="t-err">ERR  &gt;</span> <span class="t-err">${msg}</span>`); }
-  function writeWarn(msg)    { writeLine(`<span class="t-warn">WARN &gt;</span> <span class="t-warn">${msg}</span>`); }
-  function writeData(msg)    { writeLine(`<span class="t-data">DATA &gt;</span> <span class="t-data">${msg}</span>`); }
-
-  function writeCursor() {
-    const line = document.createElement('div');
-    line.className = 't-line';
-    line.id = 'cursor-line';
-    line.innerHTML = `<span class="t-ts">[${ts()}]</span><span class="t-info">READY &gt;</span> <span class="cursor"></span>`;
-    terminal.appendChild(line);
-    terminal.scrollTop = terminal.scrollHeight;
-    totalLines++;
-    lineCount.textContent = totalLines;
-  }
-
-  /* ── Syntax-highlight a JSON value ─────────────────────────────────── */
-  function highlightValue(val) {
-    if (Array.isArray(val)) {
-      if (val.length === 0) return '<span class="json-arr">[]</span>';
-      const items = val.map(v => `<span class="json-cmd">"${v}"</span>`).join(', ');
-      return `<span class="json-arr">[</span>${items}<span class="json-arr">]</span>`;
-    }
-    if (typeof val === 'string') return `<span class="json-str">"${val}"</span>`;
-    if (typeof val === 'number') return `<span class="json-num">${val}</span>`;
-    if (typeof val === 'boolean') return `<span class="json-bool">${val}</span>`;
-    if (val === null) return `<span class="json-null">null</span>`;
-    return String(val);
-  }
-
-  /* ── Render a full JSON object into the terminal ────────────────────── */
-  function renderJSON(data) {
-    const block = document.createElement('div');
-    block.className = 'json-block';
-
-    let html = '<span class="json-arr">{</span><br>';
-    const entries = Object.entries(data);
-    entries.forEach(([k, v], i) => {
-      const comma = i < entries.length - 1 ? ',' : '';
-      html += `&nbsp;&nbsp;<span class="json-key">"${k}"</span>: ${highlightValue(v)}${comma}<br>`;
+    // --- 1. View Toggling ---
+    tabUpload.addEventListener('click', () => {
+      tabUpload.classList.add('active');
+      tabCamera.classList.remove('active');
+      uploadSection.style.display = 'block';
+      cameraSection.style.display = 'none';
+      stopCamera();
     });
-    html += '<span class="json-arr">}</span>';
-    block.innerHTML = html;
-    terminal.appendChild(block);
-    terminal.scrollTop = terminal.scrollHeight;
-    totalLines++;
-    lineCount.textContent = totalLines;
-  }
 
-  /* ── Render command pills ─────────────────────────────────────────── */
-  function renderCommandPills(commands) {
-    if (!commands || commands.length === 0) return;
-    const wrap = document.createElement('div');
-    wrap.className = 'cmd-pills';
-    commands.forEach((cmd, i) => {
-      const pill = document.createElement('div');
-      pill.className = 'cmd-pill';
-      pill.style.animationDelay = (i * 60) + 'ms';
-      pill.textContent = cmd;
-      wrap.appendChild(pill);
+    tabCamera.addEventListener('click', async () => {
+      tabCamera.classList.add('active');
+      tabUpload.classList.remove('active');
+      uploadSection.style.display = 'none';
+      cameraSection.style.display = 'block';
+      await startCamera();
     });
-    terminal.appendChild(wrap);
-    terminal.scrollTop = terminal.scrollHeight;
-  }
 
-  /* ── Progress bar animation ─────────────────────────────────────────── */
-  function startProgress(durationMs) {
-    clearInterval(progressTimer);
-    const start = Date.now();
-    progressFill.style.width = '0%';
-    progressLabel.textContent = '0%';
-    progressTimer = setInterval(() => {
-      const pct = Math.min(((Date.now() - start) / durationMs) * 100, 98);
-      progressFill.style.width = pct + '%';
-      progressLabel.textContent = Math.floor(pct) + '%';
-    }, 80);
-  }
-
-  function finishProgress() {
-    clearInterval(progressTimer);
-    progressFill.style.width = '100%';
-    progressLabel.textContent = '100%';
-    setTimeout(() => {
-      progressFill.style.width = '0%';
-      progressLabel.textContent = '—';
-    }, 1500);
-  }
-
-  /* ── Duration counter ───────────────────────────────────────────────── */
-  function startDuration() {
-    durationSec = 0;
-    recDuration.textContent = '0.0s';
-    durationTimer = setInterval(() => {
-      durationSec += 0.1;
-      recDuration.textContent = durationSec.toFixed(1) + 's';
-    }, 100);
-  }
-
-  function stopDuration() {
-    clearInterval(durationTimer);
-  }
-
-  /* ── SET state helpers ──────────────────────────────────────────────── */
-  function setRecording() {
-    isRecording = true;
-    recBtn.classList.add('loading');
-    btnLabel.textContent = 'Processing…';
-    recOverlay.classList.add('visible');
-    statStatus.textContent = 'RECORDING';
-    statStatus.style.color = 'var(--red)';
-    startProgress(8000);
-    startDuration();
-  }
-
-  function setIdle() {
-    isRecording = false;
-    recBtn.classList.remove('loading');
-    btnLabel.textContent = 'Record Motion';
-    recOverlay.classList.remove('visible');
-    statStatus.textContent = 'IDLE';
-    statStatus.style.color = 'var(--text-muted)';
-    statLast.textContent = ts();
-    finishProgress();
-    stopDuration();
-  }
-
-  /* ── Boot sequence ──────────────────────────────────────────────────── */
-  async function initCamera() {
-    try {
-      writeSystem('Initializing local webcam feed …');
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      webcam.srcObject = stream;
-      webcam.style.display = 'block';
-      videoPlaceholder.style.display = 'none';
-      writeOk('Webcam connected and streaming');
-    } catch (err) {
-      writeError(`Webcam error: ${err.message}`);
-    }
-  }
-
-  function bootSequence() {
-    const lines = [
-      () => writeSystem('Initialising Motion Command Center …'),
-      () => writeInfo('MediaPipe Pose v0.10 — Full-Body Kinematic Engine loaded'),
-      () => writeInfo('Endpoint: http://localhost:5000/trigger_learning'),
-      () => writeOk('System ready. Awaiting motion capture trigger.'),
-      () => initCamera(),
-      () => writeCursor(),
-    ];
-    lines.forEach((fn, i) => setTimeout(fn, i * 180 + 200));
-  }
-
-  /* ── Main fetch logic ───────────────────────────────────────────────── */
-  recBtn.addEventListener('click', async () => {
-    if (isRecording) return;
-    if (!stream) {
-      writeError('Camera stream not available. Cannot record.');
-      return;
+    // --- 2. Camera Logic ---
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        cameraPreview.srcObject = stream;
+        statusDiv.textContent = "";
+      } catch (err) {
+        statusDiv.className = 'error';
+        statusDiv.textContent = "❌ Error: Could not access camera.";
+      }
     }
 
-    // Remove old cursor
-    const oldCursor = document.getElementById('cursor-line');
-    if (oldCursor) oldCursor.remove();
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    }
 
-    setRecording();
-    writeSystem('──────────────────────────────────────────');
-    writeInfo('Starting MediaRecorder capture (8s) …');
-    writeData('Recording motion for kinematic compilation …');
-    
-    recordedChunks = [];
-    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-    mediaRecorder.ondataavailable = e => {
-      if (e.data.size > 0) recordedChunks.push(e.data);
-    };
-    
-    mediaRecorder.onstop = async () => {
-      setIdle();
-      writeOk('Recording finished. Generating video blob...');
-      const blob = new Blob(recordedChunks, { type: 'video/webm' });
-      const recSizeStr = (blob.size / 1024).toFixed(1) + ' KB';
-      writeInfo(`Blob size: ${recSizeStr}`);
-      recSize.textContent = recSizeStr;
+    btnStartRec.addEventListener('click', () => {
+      recordedChunks = [];
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
       
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        processVideo(blob);
+      };
+
+      // UI States
+      mediaRecorder.start();
+      btnStartRec.style.display = 'none';
+      btnStopRec.style.display = 'flex';
+      recIndicator.classList.add('active');
+      
+      // Enforce 5 Second Limit
+      let secondsLeft = 5;
+      statusDiv.className = 'loading';
+      statusDiv.textContent = `🔴 Recording... (${secondsLeft}s)`;
+
+      countdownInterval = setInterval(() => {
+        secondsLeft--;
+        statusDiv.textContent = `🔴 Recording... (${secondsLeft}s)`;
+        if (secondsLeft <= 0) clearInterval(countdownInterval);
+      }, 1000);
+
+      recordingTimeout = setTimeout(() => {
+        if (mediaRecorder.state === 'recording') {
+          stopRecordingActions();
+        }
+      }, 5000);
+    });
+
+    btnStopRec.addEventListener('click', () => {
+      stopRecordingActions();
+    });
+
+    function stopRecordingActions() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
+      
+      // Cleanup timers
+      clearTimeout(recordingTimeout);
+      clearInterval(countdownInterval);
+      
+      // UI Reset
+      btnStartRec.style.display = 'flex';
+      btnStopRec.style.display = 'none';
+      recIndicator.classList.remove('active');
+    }
+
+    // --- 3. Upload & Drag Logic ---
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) processVideo(e.target.files[0]);
+    });
+
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) processVideo(e.dataTransfer.files[0]);
+    });
+
+    // --- 4. Main Processing Function ---
+    async function processVideo(blobOrFile) {
+      statusDiv.className = 'loading';
+      statusDiv.textContent = '🚀 Compiling via Gemini...';
+      
+      // Disable interaction
+      dropZone.style.opacity = '0.5';
+      dropZone.style.pointerEvents = 'none';
+      btnStartRec.disabled = true;
+
       const formData = new FormData();
-      formData.append('video', blob, 'demo_motion.webm');
-      
-      writeData('Uploading video mapping to backend POST /trigger_learning...');
-      const startTime = Date.now();
+      // Ensure we pass a filename so Flask handles it as a file
+      formData.append('video', blobOrFile, 'capture.webm');
 
       try {
-        const res = await fetch('http://localhost:5000/trigger_learning', {
+        const response = await fetch('http://127.0.0.1:5000/upload', {
           method: 'POST',
           body: formData
         });
 
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status} — ${res.statusText}`);
-        }
-
-        const data = await res.json();
-        const commands = data.commands ?? data.sequence ?? data.result ?? [];
-
-        writeOk(`Response received in ${elapsed}s · Status ${res.status}`);
-        writeData('Parsing kinematic JSON payload …');
-        renderJSON(data);
-
-        if (Array.isArray(commands) && commands.length > 0) {
-          totalCmds += commands.length;
-          cmdCount.textContent = totalCmds;
-          writeOk(`Compiled ${commands.length} robot command(s):`);
-          renderCommandPills(commands);
+        const data = await response.json();
+        if (response.ok) {
+          statusDiv.className = 'success';
+          statusDiv.textContent = `✅ ${data.message} (${data.commands_generated} frames)`;
         } else {
-          writeWarn('No mappable commands detected in motion sequence.');
+          statusDiv.className = 'error';
+          statusDiv.textContent = `❌ Error: ${data.error || 'Server processing failed'}`;
         }
-
       } catch (err) {
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-
-        if (err.name === 'TypeError' && err.message.includes('fetch')) {
-          writeError('Connection refused — is the Flask server running on :5000?');
-          writeWarn('Start the server: python server.py');
-
-          // ── Demo mode: render mock data so UI is testable ──────────────
-          writeInfo('↳ Demo mode: rendering mock payload …');
-          const mock = {
-            status: 'demo',
-            model: 'mediapipe-pose-engine',
-            elapsed_s: parseFloat(elapsed),
-            commands: ['RAISE_RIGHT_ARM', 'OPEN_HAND', 'CLOSE_HAND', 'LOWER_RIGHT_ARM', 'TURN_TORSO_LEFT'],
-            video_path: 'demo_motion.webm',
-            timestamp: new Date().toISOString(),
-          };
-          renderJSON(mock);
-          totalCmds += mock.commands.length;
-          cmdCount.textContent = totalCmds;
-          writeOk(`[DEMO] ${mock.commands.length} commands compiled:`);
-          renderCommandPills(mock.commands);
-        } else {
-          writeError(`Error after ${elapsed}s — ${err.message}`);
-        }
+        statusDiv.className = 'error';
+        statusDiv.textContent = `❌ Network Error: Could not reach the Flask server.`;
+      } finally {
+        fileInput.value = '';
+        dropZone.style.opacity = '1';
+        dropZone.style.pointerEvents = 'auto';
+        btnStartRec.disabled = false;
       }
-
-      writeCursor();
-    };
-    
-    mediaRecorder.start();
-    // Stop recording after 8 seconds (matching the progress bar dur in setRecording)
-    setTimeout(() => {
-      if (mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-      }
-    }, 8000);
-  });
-
-  /* ── Clear button ─────────────────────────────────────────────────── */
-  document.getElementById('clear-btn').addEventListener('click', () => {
-    terminal.innerHTML = '';
-    totalLines = 0;
-    lineCount.textContent = 0;
-    bootSequence();
-  });
-
-  /* ── Boot ─────────────────────────────────────────────────────────── */
-  bootSequence();
-</script>
+    }
+  </script>
 </body>
+
 </html>
